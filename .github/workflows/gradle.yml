@@ -39,7 +39,7 @@ jobs:
       with:
         name: Saku-Taskbar-Test-Reports
         path: |
-          app/build/test-results/testFreeDebug/**/*.xml
-          app/build/reports/tests/testFreeDebug/**
+          app/build/test-results/testFreeDebugUnitTest/**/*.xml
+          app/build/reports/tests/testFreeDebugUnitTest/**
         if-no-files-found: warn
         retention-days: 7
