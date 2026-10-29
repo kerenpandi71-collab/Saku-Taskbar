@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
+import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
 import android.view.View;
@@ -23,6 +24,10 @@ public final class MacDockView extends ViewGroup {
 
     private final int itemHeight;
     private final int itemGap;
+
+    public MacDockView(Context context, AttributeSet attrs) {
+        this(context);
+    }
 
     public MacDockView(Context context) {
         super(context);
