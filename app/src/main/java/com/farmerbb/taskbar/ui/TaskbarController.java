@@ -1421,8 +1421,10 @@ public class TaskbarController extends UIController {
             if(navbarButtonsEnabled)
                 navbarButtons.setVisibility(View.VISIBLE);
 
-            if(isShowingRecents && scrollView.getVisibility() == View.GONE)
-                scrollView.setVisibility(View.INVISIBLE);
+            // The Start button is inside the dock container, so restore the
+            // container whenever the taskbar is shown, even with no recent apps.
+            if(scrollView.getVisibility() != View.VISIBLE)
+                scrollView.setVisibility(View.VISIBLE);
 
             if(sysTrayEnabled)
                 sysTrayParentLayout.setVisibility(View.VISIBLE);
