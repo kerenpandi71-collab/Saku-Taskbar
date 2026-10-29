@@ -1049,8 +1049,10 @@ public class TaskbarController extends UIController {
                             );
                         }
                     } else {
+                        // The Start button lives inside the dock; an empty app list
+                        // must not hide the entire dock surface.
                         isShowingRecents = false;
-                        scrollView.setVisibility(View.GONE);
+                        scrollView.setVisibility(View.VISIBLE);
                     }
                 });
             } else if(runningAppsOnly)
@@ -1059,7 +1061,8 @@ public class TaskbarController extends UIController {
             currentTaskbarIds.clear();
             handler.post(() -> {
                 isShowingRecents = false;
-                scrollView.setVisibility(View.GONE);
+                // Keep the dock available even when there are no recent apps.
+                scrollView.setVisibility(View.VISIBLE);
             });
         }
     }
