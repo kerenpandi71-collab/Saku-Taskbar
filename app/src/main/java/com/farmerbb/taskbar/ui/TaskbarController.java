@@ -19,6 +19,7 @@ import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
+import android.app.ActivityOptions;
 import android.app.AlarmManager;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStats;
@@ -652,6 +653,23 @@ public class TaskbarController extends UIController {
         return searchInterval;
     }
 
+    private void openSettingsOnTaskbarDisplay(Context context, Intent intent, View anchor) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        try {
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Display display = anchor.getDisplay();
+                int displayId = display != null ? display.getDisplayId() : Display.DEFAULT_DISPLAY;
+                Bundle options = ActivityOptions.makeBasic()
+                        .setLaunchDisplayId(displayId)
+                        .toBundle();
+                context.startActivity(intent, options);
+            } else {
+                context.startActivity(intent);
+            }
+        } catch(ActivityNotFoundException | SecurityException | IllegalArgumentException ignored) {}
+    }
+
     @VisibleForTesting
     void drawSysTray(Context context, int layoutId, LinearLayout layout) {
         sysTrayLayout = (LinearLayout) LayoutInflater.from(context).inflate(R.layout.tb_system_tray, null);
@@ -675,6 +693,14 @@ public class TaskbarController extends UIController {
         sysTrayLayout.setLayoutParams(sysTrayParams);
 
         if(!U.isLibrary(context)) {
+            // Wi-Fi and Bluetooth indicators can open their Settings screens on the
+            // display hosting Taskbar. The system notification/Quick Settings shade
+            // remains controlled by Android's AccessibilityService global actions.
+            sysTrayLayout.findViewById(R.id.wifi).setOnClickListener(v ->
+                    openSettingsOnTaskbarDisplay(context, new Intent(Settings.ACTION_WIFI_SETTINGS), v));
+            sysTrayLayout.findViewById(R.id.bluetooth).setOnClickListener(v ->
+                    openSettingsOnTaskbarDisplay(context, new Intent(Settings.ACTION_BLUETOOTH_SETTINGS), v));
+
             sysTrayLayout.setOnClickListener(v -> {
                 U.sendAccessibilityAction(context, AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS, () -> {
                     if(LauncherHelper.getInstance().isOnSecondaryHomeScreen(context)) {
