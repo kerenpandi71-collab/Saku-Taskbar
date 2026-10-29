@@ -34,7 +34,11 @@
                     android:id="@+id/start_menu"
                     android:layout_width="@dimen/tb_start_menu_width"
                     android:layout_height="@dimen/tb_start_menu_height"
-                    android:background="?tb_start_menu_background"
+                    android:background="@android:color/transparent"
+                    android:horizontalSpacing="8dp"
+                    android:verticalSpacing="8dp"
+                    android:padding="12dp"
+                    android:clipToPadding="false"
                     android:listSelector="@null"
                     android:clickable="false" />
 
