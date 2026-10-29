@@ -29,6 +29,16 @@ public final class GlassBackgrounds {
         return drawable;
     }
 
+    public static GradientDrawable createMacGlassSurface(Context context, float radiusDp, int alpha) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setCornerRadius(dp(context, radiusDp));
+        int safeAlpha = Math.max(96, Math.min(224, alpha));
+        drawable.setColor(Color.argb(safeAlpha, 30, 36, 54));
+        drawable.setStroke(Math.max(1, dp(context, 1)), Color.argb(68, 255, 255, 255));
+        return drawable;
+    }
+
     public static GradientDrawable createPill(Context context, boolean selected) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.RECTANGLE);
