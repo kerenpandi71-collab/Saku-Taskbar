@@ -16,7 +16,6 @@
 package com.farmerbb.taskbar.ui;
 
 import android.graphics.PixelFormat;
-import android.os.Build;
 import android.view.WindowManager;
 
 import com.farmerbb.taskbar.util.U;
@@ -29,7 +28,6 @@ public class ViewParams {
     public int gravity;
     public int flags;
     public int bottomMargin;
-    private int blurBehindRadius;
 
     public ViewParams(int width, int height, int gravity, int flags, int bottomMargin) {
         this.width = width;
@@ -51,11 +49,6 @@ public class ViewParams {
         if(gravity > -1)
             wmParams.gravity = gravity;
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurBehindRadius > 0) {
-            wmParams.flags |= WindowManager.LayoutParams.FLAG_BLUR_BEHIND;
-            wmParams.setBlurBehindRadius(blurBehindRadius);
-        }
-
         if(bottomMargin > -1)
             wmParams.y = bottomMargin;
 
@@ -76,27 +69,15 @@ public class ViewParams {
         return wmParams;
     }
 
-    public ViewParams withBlurBehindRadius(int radiusPixels) {
-        ViewParams params = new ViewParams(width, height, gravity, flags, bottomMargin);
-        params.blurBehindRadius = Math.max(0, radiusPixels);
-        return params;
-    }
-
     public ViewParams updateWidth(int width) {
-        ViewParams params = new ViewParams(width, height, gravity, flags, bottomMargin);
-        params.blurBehindRadius = blurBehindRadius;
-        return params;
+        return new ViewParams(width, height, gravity, flags, bottomMargin);
     }
 
     public ViewParams updateHeight(int height) {
-        ViewParams params = new ViewParams(width, height, gravity, flags, bottomMargin);
-        params.blurBehindRadius = blurBehindRadius;
-        return params;
+        return new ViewParams(width, height, gravity, flags, bottomMargin);
     }
 
     public ViewParams updateBottomMargin(int bottomMargin) {
-        ViewParams params = new ViewParams(width, height, gravity, flags, bottomMargin);
-        params.blurBehindRadius = blurBehindRadius;
-        return params;
+        return new ViewParams(width, height, gravity, flags, bottomMargin);
     }
 }

@@ -21,7 +21,6 @@ import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
 import android.app.AlarmManager;
-import android.animation.ObjectAnimator;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
@@ -72,11 +71,9 @@ import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.view.animation.BounceInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 
 import java.lang.reflect.Field;
@@ -114,8 +111,8 @@ public class TaskbarController extends UIController {
 
     private LinearLayout layout;
     private ImageView startButton;
-    private MacDockView taskbar;
-    private HorizontalScrollView scrollView;
+    private LinearLayout taskbar;
+    private FrameLayout scrollView;
     private Button button;
     private Space space;
     private FrameLayout dashboardButton;
@@ -152,7 +149,6 @@ public class TaskbarController extends UIController {
     private boolean dashboardEnabled = false;
     private boolean navbarButtonsEnabled = false;
     private boolean sysTrayEnabled = false;
-    private MacOSOverlayController macOverlayController;
 
     private List<String> currentTaskbarIds = new ArrayList<>();
     private int numOfPinnedApps = -1;
@@ -255,46 +251,21 @@ public class TaskbarController extends UIController {
                 -1,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
                 getBottomMargin(context)
-        ).withBlurBehindRadius(GlassBackgrounds.dp(context, 14));
+        );
 
         // Determine where to show the taskbar on screen
-        // macOS-style dock: horizontal and centered along the bottom edge.
-        String taskbarPosition = POSITION_BOTTOM_LEFT;
-        params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        int layoutId = R.layout.tb_taskbar_left;
-        positionIsVertical = false;
+        String taskbarPosition = TaskbarPosition.getTaskbarPosition(context);
+        params.gravity = getTaskbarGravity(taskbarPosition);
+        int layoutId = getTaskbarLayoutId(taskbarPosition);
+        positionIsVertical = TaskbarPosition.isVertical(taskbarPosition);
 
         // Initialize views
         SharedPreferences pref = U.getSharedPreferences(context);
         boolean altButtonConfig = pref.getBoolean(PREF_ALT_BUTTON_CONFIG, false);
 
         layout = (LinearLayout) LayoutInflater.from(U.wrapContext(context)).inflate(layoutId, null);
-        View taskbarView = layout.findViewById(R.id.taskbar);
+        taskbar = layout.findViewById(R.id.taskbar);
         scrollView = layout.findViewById(R.id.taskbar_scrollview);
-
-        // Older or mismatched layouts may still expose taskbar as a plain LinearLayout,
-        // or omit it entirely. Normalize it to MacDockView before adding child views.
-        if(taskbarView instanceof MacDockView) {
-            taskbar = (MacDockView) taskbarView;
-        } else {
-            taskbar = new MacDockView(context);
-            if(taskbarView != null && taskbarView.getParent() instanceof ViewGroup) {
-                ViewGroup parent = (ViewGroup) taskbarView.getParent();
-                int index = parent.indexOfChild(taskbarView);
-                ViewGroup.LayoutParams oldParams = taskbarView.getLayoutParams();
-                parent.removeView(taskbarView);
-                parent.addView(taskbar, index, oldParams);
-            } else if(scrollView != null) {
-                ViewGroup dockContainer = scrollView;
-                if(scrollView.getChildCount() > 0
-                        && scrollView.getChildAt(0) instanceof ViewGroup) {
-                    dockContainer = (ViewGroup) scrollView.getChildAt(0);
-                }
-                dockContainer.addView(taskbar);
-            } else {
-                layout.addView(taskbar);
-            }
-        }
 
         int backgroundTint = U.getBackgroundTint(context);
         int accentColor = U.getAccentColor(context);
@@ -311,9 +282,7 @@ public class TaskbarController extends UIController {
 
         startButton = layout.findViewById(R.id.start_button);
         drawStartButton(context, startButton, pref);
-        ViewGroup startButtonParent = (ViewGroup) startButton.getParent();
-        if(startButtonParent != null) startButtonParent.removeView(startButton);
-        taskbar.addView(startButton);
+        addPowerMenuButton(accentColor);
 
         refreshInterval = (int) (Float.parseFloat(pref.getString(PREF_REFRESH_FREQUENCY, "1")) * 1000);
         if(refreshInterval == 0)
@@ -342,8 +311,6 @@ public class TaskbarController extends UIController {
 
         updateButton(false);
         button.setOnClickListener(v -> toggleTaskbar(true));
-        // The macOS Dock has no Taskbar collapse chevron; keep legacy actions available via broadcasts.
-        button.setVisibility(View.GONE);
 
         LinearLayout buttonLayout = layout.findViewById(altButtonConfig
                 ? R.id.hide_taskbar_button_layout_alt
@@ -357,30 +324,22 @@ public class TaskbarController extends UIController {
 
         dashboardButton = layout.findViewById(R.id.dashboard_button);
         navbarButtons = layout.findViewById(R.id.navbar_buttons);
-        dashboardEnabled = false;
-        navbarButtonsEnabled = false;
-        if(dashboardButton != null) dashboardButton.setVisibility(View.GONE);
-        if(navbarButtons != null) navbarButtons.setVisibility(View.GONE);
+        dashboardEnabled = drawDashboardButton(context, layout, dashboardButton, accentColor);
+        navbarButtonsEnabled = drawNavbarButtons(context, layout, pref, accentColor);
+        if(!navbarButtonsEnabled)
+            navbarButtons.setVisibility(View.GONE);
 
-        // Keep the legacy wrapper invisible; the MacDockView owns the floating glass surface.
-        sysTrayEnabled = false;
-        layout.setBackgroundColor(Color.TRANSPARENT);
-        layout.setPadding(0, 0, 0, 0);
-        layout.setElevation(0);
-        layout.setClipChildren(false);
-        layout.setClipToPadding(false);
-        if(scrollView != null) {
-            scrollView.setBackgroundColor(Color.TRANSPARENT);
-            scrollView.setClipChildren(false);
-            scrollView.setClipToPadding(false);
-            scrollView.setVisibility(View.VISIBLE);
-            ViewGroup.LayoutParams scrollParams = scrollView.getLayoutParams();
-            scrollParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            scrollView.setLayoutParams(scrollParams);
+        sysTrayEnabled = U.isSystemTrayEnabled(context);
+
+        if(sysTrayEnabled) {
+            drawSysTray(context, layoutId, layout);
         }
-        layout.findViewById(R.id.space).setVisibility(View.GONE);
-        layout.findViewById(R.id.space_alt).setVisibility(View.GONE);
-        layout.findViewById(R.id.divider).setVisibility(View.GONE);
+
+        // Dark translucent glass surface; this avoids expensive real-time blur on low-RAM devices.
+        layout.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
+        layout.findViewById(R.id.divider).setBackgroundColor(
+                pref.getBoolean(PREF_CENTERED_ICONS, false) ? 0 : accentColor
+        );
         button.setTextColor(accentColor);
 
         applyMarginFix(host, layout, params);
@@ -417,7 +376,7 @@ public class TaskbarController extends UIController {
         matchParent = false;
         updateParamsRunnable = () -> {
             ViewParams newParams;
-            if(positionIsVertical) {
+            if(TaskbarPosition.isVertical(context)) {
                 newParams = matchParent
                         ? params.updateHeight(WindowManager.LayoutParams.MATCH_PARENT)
                         : params.updateHeight(WindowManager.LayoutParams.WRAP_CONTENT);
@@ -435,9 +394,6 @@ public class TaskbarController extends UIController {
         startRefreshingRecents();
 
         host.addView(layout, params);
-
-        macOverlayController = new MacOSOverlayController(context, host);
-        macOverlayController.show();
 
         isFirstStart = false;
     }
@@ -965,7 +921,7 @@ public class TaskbarController extends UIController {
             }
 
             // Determine if we need to reverse the order again
-            if(positionIsVertical) {
+            if(TaskbarPosition.isVertical(context)) {
                 Collections.reverse(entries);
                 Collections.reverse(launcherAppCache);
             }
@@ -1010,8 +966,7 @@ public class TaskbarController extends UIController {
                 handler.post(() -> {
                     if(numOfEntries > 0 || fullLength) {
                         ViewGroup.LayoutParams params = scrollView.getLayoutParams();
-                        // A macOS Dock wraps its app icons instead of stretching across the desktop.
-                        calculateScrollViewParams(context, pref, params, false, numOfEntries);
+                        calculateScrollViewParams(context, pref, params, fullLength, numOfEntries);
                         scrollView.setLayoutParams(params);
 
                         for(Integer key : sysTrayIconStates.keySet()) {
@@ -1021,7 +976,6 @@ public class TaskbarController extends UIController {
                         }
 
                         taskbar.removeAllViews();
-                        taskbar.addView(startButton);
                         for(int i = 0; i < entries.size(); i++) {
                             taskbar.addView(getView(entries, i));
                         }
@@ -1042,17 +996,15 @@ public class TaskbarController extends UIController {
                                     () -> scrollTaskbar(
                                             scrollView,
                                             taskbar,
-                                            POSITION_BOTTOM_LEFT,
+                                            TaskbarPosition.getTaskbarPosition(context),
                                             sortOrder,
                                             shouldRefreshRecents
                                     )
                             );
                         }
                     } else {
-                        // The Start button lives inside the dock; an empty app list
-                        // must not hide the entire dock surface.
                         isShowingRecents = false;
-                        scrollView.setVisibility(View.VISIBLE);
+                        scrollView.setVisibility(View.GONE);
                     }
                 });
             } else if(runningAppsOnly)
@@ -1061,8 +1013,7 @@ public class TaskbarController extends UIController {
             currentTaskbarIds.clear();
             handler.post(() -> {
                 isShowingRecents = false;
-                // Keep the dock available even when there are no recent apps.
-                scrollView.setVisibility(View.VISIBLE);
+                scrollView.setVisibility(View.GONE);
             });
         }
     }
@@ -1085,7 +1036,7 @@ public class TaskbarController extends UIController {
         int diff = Math.round(Math.max(baseStart, baseEnd) - Math.min(baseStart, baseEnd));
         boolean startIsBigger = Math.max(baseStart, baseEnd) == baseStart;
 
-        if(positionIsVertical) {
+        if(TaskbarPosition.isVertical(context)) {
             maxScreenSize = Math.max(0, display.height
                     - U.getStatusBarHeight(context)
                     - baseTotal);
@@ -1169,8 +1120,9 @@ public class TaskbarController extends UIController {
             }
         }
 
-        // The Dock's outer glass surface must remain content-sized even when its inner list scrolls.
-        boolean realMatchParent = false;
+        boolean realMatchParent = maxRecentsSize >= maxScreenSize
+                && pref.getBoolean(PREF_COLLAPSED, false)
+                && !(TaskbarPosition.isVertical(context) && U.isChromeOs(context));
 
         if(realMatchParent != matchParent) {
             matchParent = realMatchParent;
@@ -1179,8 +1131,8 @@ public class TaskbarController extends UIController {
     }
 
     @VisibleForTesting
-    void scrollTaskbar(HorizontalScrollView scrollView,
-                       ViewGroup taskbar,
+    void scrollTaskbar(FrameLayout scrollView,
+                       LinearLayout taskbar,
                        String taskbarPosition,
                        String sortOrder,
                        boolean shouldRefreshRecents) {
@@ -1238,7 +1190,7 @@ public class TaskbarController extends UIController {
 
     @VisibleForTesting
     boolean needToReverseOrder(Context context, String sortOrder) {
-        switch(POSITION_BOTTOM_LEFT) {
+        switch(TaskbarPosition.getTaskbarPosition(context)) {
             case POSITION_BOTTOM_RIGHT:
             case POSITION_TOP_RIGHT:
                 return sortOrder.contains("false");
@@ -1361,7 +1313,7 @@ public class TaskbarController extends UIController {
     }
 
     private void updateRunningAppIndicators(List<AppEntry> pinnedApps, List<AppEntry> usageStatsList, List<AppEntry> entries) {
-        if(taskbar.getChildCount() != entries.size() + 1)
+        if(taskbar.getChildCount() != entries.size())
             return;
 
         List<String> pinnedPackageList = new ArrayList<>();
@@ -1373,8 +1325,8 @@ public class TaskbarController extends UIController {
         for(AppEntry entry : usageStatsList)
             runningPackageList.add(entry.getPackageName());
 
-        for(int i = 0; i < entries.size(); i++) {
-            View convertView = taskbar.getChildAt(i + 1);
+        for(int i = 0; i < taskbar.getChildCount(); i++) {
+            View convertView = taskbar.getChildAt(i);
             String packageName = entries.get(i).getPackageName();
 
             ImageView runningAppIndicator = convertView.findViewById(R.id.running_app_indicator);
@@ -1421,10 +1373,8 @@ public class TaskbarController extends UIController {
             if(navbarButtonsEnabled)
                 navbarButtons.setVisibility(View.VISIBLE);
 
-            // The Start button is inside the dock container, so restore the
-            // container whenever the taskbar is shown, even with no recent apps.
-            if(scrollView.getVisibility() != View.VISIBLE)
-                scrollView.setVisibility(View.VISIBLE);
+            if(isShowingRecents && scrollView.getVisibility() == View.GONE)
+                scrollView.setVisibility(View.INVISIBLE);
 
             if(sysTrayEnabled)
                 sysTrayParentLayout.setVisibility(View.VISIBLE);
@@ -1571,11 +1521,6 @@ public class TaskbarController extends UIController {
     public void onDestroyHost(UIHost host) {
         shouldRefreshRecents = false;
 
-        if(macOverlayController != null) {
-            macOverlayController.destroy();
-            macOverlayController = null;
-        }
-
         if(layout != null)
             try {
                 host.removeView(layout);
@@ -1628,11 +1573,6 @@ public class TaskbarController extends UIController {
     @Override
     public void onRecreateHost(UIHost host) {
         if(layout != null) {
-            if(macOverlayController != null) {
-                macOverlayController.destroy();
-                macOverlayController = null;
-            }
-
             try {
                 host.removeView(layout);
             } catch (IllegalArgumentException ignored) {}
@@ -1661,7 +1601,7 @@ public class TaskbarController extends UIController {
         imageView.setImageDrawable(entry.getIcon(context));
         imageView2.setBackgroundColor(U.getAccentColor(context));
 
-        String taskbarPosition = POSITION_BOTTOM_LEFT;
+        String taskbarPosition = TaskbarPosition.getTaskbarPosition(context);
         if(pref.getBoolean(PREF_SHORTCUT_ICON, true)) {
             boolean shouldShowShortcutIcon;
             if(taskbarPosition.contains("vertical"))
@@ -1678,12 +1618,14 @@ public class TaskbarController extends UIController {
         }
 
         FrameLayout layout = convertView.findViewById(R.id.entry);
-        layout.setOnClickListener(view -> {
-            if(macOverlayController != null)
-                macOverlayController.setLastLaunchedApp(entry);
-            animateDockIcon(imageView);
-            U.launchApp(context, entry, null, true, false, view);
-        });
+        layout.setOnClickListener(view -> U.launchApp(
+                context,
+                entry,
+                null,
+                true,
+                false,
+                view
+        ));
 
         layout.setOnLongClickListener(view -> {
             int[] location = new int[2];
@@ -1708,22 +1650,30 @@ public class TaskbarController extends UIController {
             return false;
         });
 
-        if(pref.getBoolean(PREF_VISUAL_FEEDBACK, true))
+        if(pref.getBoolean(PREF_VISUAL_FEEDBACK, true)) {
+            layout.setOnHoverListener((v, event) -> {
+                if(event.getAction() == MotionEvent.ACTION_HOVER_ENTER) {
+                    int accentColor = U.getAccentColor(context);
+                    accentColor = ColorUtils.setAlphaComponent(accentColor, Color.alpha(accentColor) / 2);
+                    v.setBackgroundColor(accentColor);
+                }
+
+                if(event.getAction() == MotionEvent.ACTION_HOVER_EXIT)
+                    v.setBackgroundColor(0);
+
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+                    v.setPointerIcon(PointerIcon.getSystemIcon(context, PointerIcon.TYPE_DEFAULT));
+
+                return false;
+            });
+
             layout.setOnTouchListener((v, event) -> {
                 v.setAlpha(event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE ? 0.5f : 1);
                 return false;
             });
+        }
 
         return convertView;
-    }
-
-    private void animateDockIcon(ImageView icon) {
-        ObjectAnimator bounce = ObjectAnimator.ofFloat(icon, View.TRANSLATION_Y,
-                0f, -GlassBackgrounds.dp(context, 11), 0f,
-                -GlassBackgrounds.dp(context, 6), 0f);
-        bounce.setDuration(430);
-        bounce.setInterpolator(new BounceInterpolator());
-        bounce.start();
     }
 
     private void openContextMenu(AppEntry entry, int[] location) {

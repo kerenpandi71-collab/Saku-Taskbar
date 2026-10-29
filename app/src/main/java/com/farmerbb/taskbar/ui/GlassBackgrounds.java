@@ -29,22 +29,6 @@ public final class GlassBackgrounds {
         return drawable;
     }
 
-    /** Windows 11-inspired dark Acrylic/Mica surface without expensive live blur. */
-    public static GradientDrawable createWindowsSurface(Context context, float radiusDp, int alpha) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setShape(GradientDrawable.RECTANGLE);
-        drawable.setCornerRadius(dp(context, radiusDp));
-        int safeAlpha = Math.max(96, Math.min(224, alpha));
-        drawable.setColor(Color.argb(safeAlpha, 20, 27, 42));
-        drawable.setStroke(Math.max(1, dp(context, 1)), Color.argb(76, 190, 215, 255));
-        return drawable;
-    }
-
-    /** Backward-compatible alias for older overlay classes still using the former name. */
-    public static GradientDrawable createMacGlassSurface(Context context, float radiusDp, int alpha) {
-        return createWindowsSurface(context, radiusDp, alpha);
-    }
-
     public static GradientDrawable createPill(Context context, boolean selected) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.RECTANGLE);

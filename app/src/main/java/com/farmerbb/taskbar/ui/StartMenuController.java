@@ -174,39 +174,28 @@ public class StartMenuController extends UIController {
         IconCache.getInstance(context).clearCache();
 
         final SharedPreferences pref = U.getSharedPreferences(context);
-        boolean shouldShowSearchBox = true;
+        boolean shouldShowSearchBox = shouldShowSearchBox(pref, hasHardwareKeyboard);
 
         // Initialize layout params
         WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         TaskbarPosition.setCachedRotation(windowManager.getDefaultDisplay().getRotation());
 
         final ViewParams params = new ViewParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
                 -1,
                 shouldShowSearchBox ? 0 : WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
-                GlassBackgrounds.dp(context, 36)
-        ).withBlurBehindRadius(GlassBackgrounds.dp(context, 18));
+                getBottomMargin(context)
+        );
 
         // Determine where to show the start menu on screen
-        String taskbarPosition = POSITION_BOTTOM_LEFT;
-        int layoutId = R.layout.tb_start_menu_left;
-        params.gravity = Gravity.TOP | Gravity.LEFT;
+        String taskbarPosition = TaskbarPosition.getTaskbarPosition(context);
+        int layoutId = getStartMenuLayoutId(taskbarPosition);
+        params.gravity = getStartMenuGravity(taskbarPosition);
 
         // Initialize views
         layout = (StartMenuLayout) LayoutInflater.from(U.wrapContext(context)).inflate(layoutId, null);
         layout.setAlpha(0);
-        layout.setPadding(GlassBackgrounds.dp(context, 24), GlassBackgrounds.dp(context, 18),
-                GlassBackgrounds.dp(context, 24), GlassBackgrounds.dp(context, 24));
-        layout.setBackground(GlassBackgrounds.createWindowsSurface(context, 18, 218));
-
-        View searchLayoutForOrdering = layout.findViewById(R.id.search_view_layout);
-        if(searchLayoutForOrdering != null) {
-            layout.removeView(searchLayoutForOrdering);
-            layout.addView(searchLayoutForOrdering, 0);
-        }
-        View bottomSpace = layout.findViewById(R.id.start_menu_space);
-        if(bottomSpace != null) bottomSpace.setVisibility(View.GONE);
 
         startMenu = layout.findViewById(R.id.start_menu);
 
@@ -224,24 +213,14 @@ public class StartMenuController extends UIController {
         if(pref.getBoolean(PREF_VISUAL_FEEDBACK, true))
             startMenu.setRecyclerListener(view -> view.setBackgroundColor(0));
 
-        int columns = Math.max(5, context.getResources().getInteger(R.integer.tb_start_menu_columns));
-        boolean isGrid = true;
-        startMenu.setNumColumns(columns);
+        int columns = context.getResources().getInteger(R.integer.tb_start_menu_columns);
+        boolean isGrid = pref.getString(PREF_START_MENU_LAYOUT, "grid").equals("grid");
 
-        LinearLayout.LayoutParams gridFrameParams = (LinearLayout.LayoutParams) layout.findViewById(R.id.start_menu_frame).getLayoutParams();
-        gridFrameParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        gridFrameParams.height = 0;
-        gridFrameParams.weight = 1f;
-        layout.findViewById(R.id.start_menu_frame).setLayoutParams(gridFrameParams);
-        ViewGroup.LayoutParams gridParams = startMenu.getLayoutParams();
-        gridParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        gridParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
-        startMenu.setLayoutParams(gridParams);
-
-        ViewGroup.LayoutParams searchLayoutParams = layout.findViewById(R.id.search_view_layout).getLayoutParams();
-        searchLayoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        searchLayoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-        layout.findViewById(R.id.search_view_layout).setLayoutParams(searchLayoutParams);
+        if(isGrid) {
+            ViewGroup.LayoutParams startMenuParams = startMenu.getLayoutParams();
+            startMenuParams.width = (int) (startMenuParams.width * (columns / 3f));
+            startMenu.setLayoutParams(startMenuParams);
+        }
 
         searchView = layout.findViewById(R.id.search);
         searchViewClicked = false;
@@ -250,12 +229,16 @@ public class StartMenuController extends UIController {
 
         FrameLayout startMenuFrame = layout.findViewById(R.id.start_menu_frame);
         FrameLayout searchViewLayout = layout.findViewById(R.id.search_view_layout);
-        startMenuFrame.setBackgroundColor(Color.TRANSPARENT);
-        searchViewLayout.setBackground(GlassBackgrounds.createWindowsSurface(context, 14, 222));
+        if(pref.getBoolean(PREF_TRANSPARENT_START_MENU, false)) {
+            startMenuFrame.setBackgroundColor(Color.TRANSPARENT);
+            searchViewLayout.setBackgroundColor(Color.TRANSPARENT);
+        } else {
+            startMenuFrame.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
+            searchViewLayout.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
+        }
 
         if(shouldShowSearchBox) {
-            searchView.setIconifiedByDefault(false);
-            searchView.setIconified(false);
+            if(!hasHardwareKeyboard) searchView.setIconifiedByDefault(true);
 
             searchView.setOnTouchListener((v, event) -> {
                 searchViewClicked = true;
@@ -350,11 +333,15 @@ public class StartMenuController extends UIController {
             View childLayout = layout.findViewById(R.id.search_view_child_layout);
             childLayout.setBackgroundColor(Color.TRANSPARENT);
 
-            ViewGroup.LayoutParams childLayoutParams = childLayout.getLayoutParams();
-            childLayoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
-            childLayout.setLayoutParams(childLayoutParams);
+            if(isGrid) {
+                ViewGroup.LayoutParams childLayoutParams = childLayout.getLayoutParams();
+                childLayoutParams.width = (int) (childLayoutParams.width * (columns / 3f));
+                childLayout.setLayoutParams(childLayoutParams);
+            }
         } else
             searchViewLayout.setVisibility(View.GONE);
+
+        applyMarginFix(host, layout, params);
 
         textView = layout.findViewById(R.id.no_apps_found);
 
@@ -560,10 +547,13 @@ public class StartMenuController extends UIController {
                             || query != null && query.equals(queryText)) {
 
                         if(firstDraw) {
-                            // Launchpad is always an icon grid, independent of the legacy Start Menu preference.
-                            startMenu.setNumColumns(Math.max(5,
-                                    context.getResources().getInteger(R.integer.tb_start_menu_columns)));
-                            adapter = new StartMenuAdapter(context, R.layout.tb_row_alt, entries);
+                            SharedPreferences pref = U.getSharedPreferences(context);
+                            if(pref.getString(PREF_START_MENU_LAYOUT, "grid").equals("grid")) {
+                                startMenu.setNumColumns(context.getResources().getInteger(R.integer.tb_start_menu_columns));
+                                adapter = new StartMenuAdapter(context, R.layout.tb_row_alt, entries);
+                            } else
+                                adapter = new StartMenuAdapter(context, R.layout.tb_row, entries);
+
                             startMenu.setAdapter(adapter);
                         }
 

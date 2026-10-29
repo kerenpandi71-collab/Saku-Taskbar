@@ -22,7 +22,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
@@ -101,15 +100,6 @@ public class StartMenuAdapter extends ArrayAdapter<AppEntry> implements SectionI
 
         ImageView imageView = convertView.findViewById(R.id.icon);
         imageView.setImageDrawable(entry.getIcon(getContext()));
-        if(isGrid) {
-            GradientDrawable squircle = new GradientDrawable();
-            squircle.setShape(GradientDrawable.RECTANGLE);
-            squircle.setColor(Color.TRANSPARENT);
-            squircle.setCornerRadius(getContext().getResources().getDisplayMetrics().density * 14);
-            imageView.setBackground(squircle);
-            imageView.setClipToOutline(true);
-            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        }
 
         LinearLayout layout = convertView.findViewById(R.id.entry);
         layout.setOnClickListener(view -> {
