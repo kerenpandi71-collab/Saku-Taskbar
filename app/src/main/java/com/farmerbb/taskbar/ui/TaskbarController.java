@@ -76,6 +76,7 @@ import android.view.animation.BounceInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 
 import java.lang.reflect.Field;
@@ -114,7 +115,7 @@ public class TaskbarController extends UIController {
     private LinearLayout layout;
     private ImageView startButton;
     private MacDockView taskbar;
-    private ViewGroup scrollView;
+    private HorizontalScrollView scrollView;
     private Button button;
     private Space space;
     private FrameLayout dashboardButton;
@@ -1175,7 +1176,7 @@ public class TaskbarController extends UIController {
     }
 
     @VisibleForTesting
-    void scrollTaskbar(FrameLayout scrollView,
+    void scrollTaskbar(HorizontalScrollView scrollView,
                        ViewGroup taskbar,
                        String taskbarPosition,
                        String sortOrder,
