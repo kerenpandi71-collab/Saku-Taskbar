@@ -123,8 +123,9 @@ android {
     testOptions {
         unitTests {
             all {
-                // PowerMock's XStream DeepCloner reflects into TreeMap internals on JDK 21.
+                // PowerMock's XStream DeepCloner uses reflection into JDK internals on JDK 21.
                 jvmArgs '--add-opens=java.base/java.util=ALL-UNNAMED'
+                jvmArgs '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED'
 
                 testLogging {
                     events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
