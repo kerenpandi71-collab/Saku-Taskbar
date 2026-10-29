@@ -126,6 +126,7 @@ android {
                 // PowerMock's XStream DeepCloner uses reflection into JDK internals on JDK 21.
                 jvmArgs '--add-opens=java.base/java.util=ALL-UNNAMED'
                 jvmArgs '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED'
+                jvmArgs '--add-opens=java.base/java.lang=ALL-UNNAMED'
                 jvmArgs '--add-opens=java.base/java.text=ALL-UNNAMED'
                 jvmArgs '--add-opens=java.desktop/java.awt.font=ALL-UNNAMED'
 
