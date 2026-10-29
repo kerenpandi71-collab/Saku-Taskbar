@@ -229,11 +229,18 @@ public class StartMenuController extends UIController {
 
         FrameLayout startMenuFrame = layout.findViewById(R.id.start_menu_frame);
         FrameLayout searchViewLayout = layout.findViewById(R.id.search_view_layout);
+        float dexDensity = context.getResources().getDisplayMetrics().density;
+        layout.setElevation(18 * dexDensity);
+        layout.setClipToPadding(false);
+        startMenuFrame.setClipToOutline(true);
+        startMenuFrame.setElevation(4 * dexDensity);
+        searchViewLayout.setElevation(5 * dexDensity);
         if(pref.getBoolean(PREF_TRANSPARENT_START_MENU, false)) {
             startMenuFrame.setBackgroundColor(Color.TRANSPARENT);
             searchViewLayout.setBackgroundColor(Color.TRANSPARENT);
         } else {
-            startMenuFrame.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
+            // A desktop-style app launcher surface with a separate, floating search footer.
+            startMenuFrame.setBackground(GlassBackgrounds.createGlassSurface(context, 22));
             searchViewLayout.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
         }
 
