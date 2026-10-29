@@ -40,6 +40,11 @@ public final class GlassBackgrounds {
         return drawable;
     }
 
+    /** Backward-compatible alias for older overlay classes still using the former name. */
+    public static GradientDrawable createMacGlassSurface(Context context, float radiusDp, int alpha) {
+        return createWindowsSurface(context, radiusDp, alpha);
+    }
+
     public static GradientDrawable createPill(Context context, boolean selected) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.RECTANGLE);
