@@ -397,6 +397,9 @@ public final class NotificationOverlayPanel {
         card.setOnClickListener(v -> {
             if(notification.contentIntent != null) {
                 sendPendingIntent(notification.contentIntent);
+                if((notification.flags & Notification.FLAG_AUTO_CANCEL) != 0) {
+                    NotificationCountService.dismissNotificationByKey(sbn.getKey());
+                }
                 dismiss();
             }
         });
