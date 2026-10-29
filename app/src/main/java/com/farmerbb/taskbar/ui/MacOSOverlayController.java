@@ -5,7 +5,7 @@
 package com.farmerbb.taskbar.ui;
 
 import android.accessibilityservice.AccessibilityService;
-import android.app.BatteryManager;
+import android.os.BatteryManager;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStatsManager;
 import android.bluetooth.BluetoothAdapter;

@@ -560,13 +560,10 @@ public class StartMenuController extends UIController {
                             || query != null && query.equals(queryText)) {
 
                         if(firstDraw) {
-                            SharedPreferences pref = U.getSharedPreferences(context);
-                            if(pref.getString(PREF_START_MENU_LAYOUT, "grid").equals("grid")) {
-                                startMenu.setNumColumns(context.getResources().getInteger(R.integer.tb_start_menu_columns));
-                                adapter = new StartMenuAdapter(context, R.layout.tb_row_alt, entries);
-                            } else
-                                adapter = new StartMenuAdapter(context, R.layout.tb_row, entries);
-
+                            // Launchpad is always an icon grid, independent of the legacy Start Menu preference.
+                            startMenu.setNumColumns(Math.max(5,
+                                    context.getResources().getInteger(R.integer.tb_start_menu_columns)));
+                            adapter = new StartMenuAdapter(context, R.layout.tb_row_alt, entries);
                             startMenu.setAdapter(adapter);
                         }
 
