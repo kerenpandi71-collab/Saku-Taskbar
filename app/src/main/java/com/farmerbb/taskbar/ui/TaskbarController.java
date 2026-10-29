@@ -113,7 +113,7 @@ public class TaskbarController extends UIController {
 
     private LinearLayout layout;
     private ImageView startButton;
-    private LinearLayout taskbar;
+    private MacDockView taskbar;
     private FrameLayout scrollView;
     private Button button;
     private Space space;
@@ -269,6 +269,7 @@ public class TaskbarController extends UIController {
 
         layout = (LinearLayout) LayoutInflater.from(U.wrapContext(context)).inflate(layoutId, null);
         taskbar = layout.findViewById(R.id.taskbar);
+        taskbar.setBackground(GlassBackgrounds.createMacGlassSurface(context, 24, 188));
         scrollView = layout.findViewById(R.id.taskbar_scrollview);
 
         int backgroundTint = U.getBackgroundTint(context);
@@ -286,6 +287,9 @@ public class TaskbarController extends UIController {
 
         startButton = layout.findViewById(R.id.start_button);
         drawStartButton(context, startButton, pref);
+        ViewGroup startButtonParent = (ViewGroup) startButton.getParent();
+        if(startButtonParent != null) startButtonParent.removeView(startButton);
+        taskbar.addView(startButton);
 
         refreshInterval = (int) (Float.parseFloat(pref.getString(PREF_REFRESH_FREQUENCY, "1")) * 1000);
         if(refreshInterval == 0)
@@ -334,14 +338,21 @@ public class TaskbarController extends UIController {
         if(dashboardButton != null) dashboardButton.setVisibility(View.GONE);
         if(navbarButtons != null) navbarButtons.setVisibility(View.GONE);
 
-        // System indicators now live in the macOS menu bar instead of the dock.
+        // Keep the legacy wrapper invisible; the MacDockView owns the floating glass surface.
         sysTrayEnabled = false;
-        layout.setBackground(GlassBackgrounds.createMacGlassSurface(context, 26, 164));
-        layout.setPadding(GlassBackgrounds.dp(context, 10), GlassBackgrounds.dp(context, 4),
-                GlassBackgrounds.dp(context, 10), GlassBackgrounds.dp(context, 4));
-        layout.setElevation(GlassBackgrounds.dp(context, 18));
+        layout.setBackgroundColor(Color.TRANSPARENT);
+        layout.setPadding(0, 0, 0, 0);
+        layout.setElevation(0);
         layout.setClipChildren(false);
         layout.setClipToPadding(false);
+        scrollView.setBackgroundColor(Color.TRANSPARENT);
+        scrollView.setClipChildren(false);
+        scrollView.setClipToPadding(false);
+        ViewGroup.LayoutParams scrollParams = scrollView.getLayoutParams();
+        scrollParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        scrollView.setLayoutParams(scrollParams);
+        layout.findViewById(R.id.space).setVisibility(View.GONE);
+        layout.findViewById(R.id.space_alt).setVisibility(View.GONE);
         layout.findViewById(R.id.divider).setVisibility(View.GONE);
         button.setTextColor(accentColor);
 
@@ -983,6 +994,7 @@ public class TaskbarController extends UIController {
                         }
 
                         taskbar.removeAllViews();
+                        taskbar.addView(startButton);
                         for(int i = 0; i < entries.size(); i++) {
                             taskbar.addView(getView(entries, i));
                         }
@@ -1138,7 +1150,7 @@ public class TaskbarController extends UIController {
 
     @VisibleForTesting
     void scrollTaskbar(FrameLayout scrollView,
-                       LinearLayout taskbar,
+                       ViewGroup taskbar,
                        String taskbarPosition,
                        String sortOrder,
                        boolean shouldRefreshRecents) {
@@ -1319,7 +1331,7 @@ public class TaskbarController extends UIController {
     }
 
     private void updateRunningAppIndicators(List<AppEntry> pinnedApps, List<AppEntry> usageStatsList, List<AppEntry> entries) {
-        if(taskbar.getChildCount() != entries.size())
+        if(taskbar.getChildCount() != entries.size() + 1)
             return;
 
         List<String> pinnedPackageList = new ArrayList<>();
@@ -1331,8 +1343,8 @@ public class TaskbarController extends UIController {
         for(AppEntry entry : usageStatsList)
             runningPackageList.add(entry.getPackageName());
 
-        for(int i = 0; i < taskbar.getChildCount(); i++) {
-            View convertView = taskbar.getChildAt(i);
+        for(int i = 0; i < entries.size(); i++) {
+            View convertView = taskbar.getChildAt(i + 1);
             String packageName = entries.get(i).getPackageName();
 
             ImageView runningAppIndicator = convertView.findViewById(R.id.running_app_indicator);
@@ -1661,26 +1673,6 @@ public class TaskbarController extends UIController {
             if(action == MotionEvent.ACTION_SCROLL && pref.getBoolean(PREF_VISUAL_FEEDBACK, true))
                 view.setBackgroundColor(0);
 
-            return false;
-        });
-
-        layout.setOnHoverListener((v, event) -> {
-            if(event.getAction() == MotionEvent.ACTION_HOVER_ENTER) {
-                v.animate().cancel();
-                v.setPivotX(v.getWidth() / 2f);
-                v.setPivotY(v.getHeight());
-                v.setElevation(GlassBackgrounds.dp(context, 16));
-                v.animate().scaleX(1.24f).scaleY(1.24f)
-                        .translationY(-GlassBackgrounds.dp(context, 7))
-                        .setDuration(145).start();
-            } else if(event.getAction() == MotionEvent.ACTION_HOVER_EXIT) {
-                v.animate().cancel();
-                v.animate().scaleX(1f).scaleY(1f).translationY(0f)
-                        .setDuration(180).start();
-                v.setElevation(0);
-            }
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
-                v.setPointerIcon(PointerIcon.getSystemIcon(context, PointerIcon.TYPE_DEFAULT));
             return false;
         });
 

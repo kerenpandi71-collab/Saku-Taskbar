@@ -112,50 +112,13 @@ public final class MacOSOverlayController {
     }
 
     private void createMenuBar() {
-        LinearLayout bar = new LinearLayout(context);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(12), 0, dp(12), 0);
-        bar.setBackground(GlassBackgrounds.createMacGlassSurface(context, 0, 178));
-        bar.setElevation(dp(20));
-        bar.setClipChildren(false);
-        bar.setClipToPadding(false);
-
-        TextView menuMark = new TextView(context);
-        menuMark.setText("◉");
-        menuMark.setTextColor(Color.WHITE);
-        menuMark.setTextSize(18);
-        menuMark.setGravity(Gravity.CENTER);
-        menuMark.setContentDescription("Saku menu");
-        menuMark.setPadding(0, 0, dp(12), 0);
-        menuMark.setOnClickListener(v -> NotificationOverlayPanel.showPowerMenu(context, v));
-        bar.addView(menuMark, new LinearLayout.LayoutParams(dp(28), WindowManager.LayoutParams.MATCH_PARENT));
-
-        appTitle = new TextView(context);
-        appTitle.setText(lastLaunchedLabel);
-        appTitle.setTextColor(Color.WHITE);
-        appTitle.setTextSize(13);
-        appTitle.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
-        appTitle.setSingleLine(true);
-        appTitle.setMaxWidth(dp(180));
-        bar.addView(appTitle, new LinearLayout.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.MATCH_PARENT));
-
-        Space spacer = new Space(context);
-        bar.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
-
-        wifiIcon = createStatusIcon(bar, "Wi-Fi status");
-        bluetoothIcon = createStatusIcon(bar, "Bluetooth status");
-        batteryIcon = createStatusIcon(bar, "Battery status");
-
-        timeLabel = new TextView(context);
-        timeLabel.setTextColor(Color.WHITE);
-        timeLabel.setTextSize(12);
-        timeLabel.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
-        timeLabel.setPadding(dp(8), 0, 0, 0);
-        timeLabel.setSingleLine(true);
-        bar.addView(timeLabel, new LinearLayout.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.MATCH_PARENT));
+        MacTopBarView bar = new MacTopBarView(context);
+        bar.setAppLabel(lastLaunchedLabel);
+        appTitle = bar.getAppTitle();
+        timeLabel = bar.getTimeLabel();
+        wifiIcon = bar.getWifiIcon();
+        bluetoothIcon = bar.getBluetoothIcon();
+        batteryIcon = bar.getBatteryIcon();
 
         menuBar = bar;
         ViewParams params = new ViewParams(
