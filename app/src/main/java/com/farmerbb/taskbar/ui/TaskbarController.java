@@ -114,7 +114,7 @@ public class TaskbarController extends UIController {
     private LinearLayout layout;
     private ImageView startButton;
     private MacDockView taskbar;
-    private FrameLayout scrollView;
+    private ViewGroup scrollView;
     private Button button;
     private Space space;
     private FrameLayout dashboardButton;
@@ -268,8 +268,32 @@ public class TaskbarController extends UIController {
         boolean altButtonConfig = pref.getBoolean(PREF_ALT_BUTTON_CONFIG, false);
 
         layout = (LinearLayout) LayoutInflater.from(U.wrapContext(context)).inflate(layoutId, null);
-        taskbar = layout.findViewById(R.id.taskbar);
+        View taskbarView = layout.findViewById(R.id.taskbar);
         scrollView = layout.findViewById(R.id.taskbar_scrollview);
+
+        // Older or mismatched layouts may still expose taskbar as a plain LinearLayout,
+        // or omit it entirely. Normalize it to MacDockView before adding child views.
+        if(taskbarView instanceof MacDockView) {
+            taskbar = (MacDockView) taskbarView;
+        } else {
+            taskbar = new MacDockView(context);
+            if(taskbarView != null && taskbarView.getParent() instanceof ViewGroup) {
+                ViewGroup parent = (ViewGroup) taskbarView.getParent();
+                int index = parent.indexOfChild(taskbarView);
+                ViewGroup.LayoutParams oldParams = taskbarView.getLayoutParams();
+                parent.removeView(taskbarView);
+                parent.addView(taskbar, index, oldParams);
+            } else if(scrollView != null) {
+                ViewGroup dockContainer = scrollView;
+                if(scrollView.getChildCount() > 0
+                        && scrollView.getChildAt(0) instanceof ViewGroup) {
+                    dockContainer = (ViewGroup) scrollView.getChildAt(0);
+                }
+                dockContainer.addView(taskbar);
+            } else {
+                layout.addView(taskbar);
+            }
+        }
 
         int backgroundTint = U.getBackgroundTint(context);
         int accentColor = U.getAccentColor(context);
@@ -344,12 +368,15 @@ public class TaskbarController extends UIController {
         layout.setElevation(0);
         layout.setClipChildren(false);
         layout.setClipToPadding(false);
-        scrollView.setBackgroundColor(Color.TRANSPARENT);
-        scrollView.setClipChildren(false);
-        scrollView.setClipToPadding(false);
-        ViewGroup.LayoutParams scrollParams = scrollView.getLayoutParams();
-        scrollParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-        scrollView.setLayoutParams(scrollParams);
+        if(scrollView != null) {
+            scrollView.setBackgroundColor(Color.TRANSPARENT);
+            scrollView.setClipChildren(false);
+            scrollView.setClipToPadding(false);
+            scrollView.setVisibility(View.VISIBLE);
+            ViewGroup.LayoutParams scrollParams = scrollView.getLayoutParams();
+            scrollParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            scrollView.setLayoutParams(scrollParams);
+        }
         layout.findViewById(R.id.space).setVisibility(View.GONE);
         layout.findViewById(R.id.space_alt).setVisibility(View.GONE);
         layout.findViewById(R.id.divider).setVisibility(View.GONE);
