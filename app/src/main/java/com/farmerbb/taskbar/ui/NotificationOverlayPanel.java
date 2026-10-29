@@ -13,13 +13,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
-import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Process;
 import android.os.UserManager;
 import android.provider.Settings;
 import android.service.notification.Notification;
@@ -134,15 +132,13 @@ public final class NotificationOverlayPanel {
                     activePanel.dismiss();
                     return;
                 }
-                activePanel.mode = requestedMode;
-                activePanel.updatePanelPlacement();
-                activePanel.renderContent();
+                activePanel.renderHeaderAndContent();
                 return;
             }
             if(activePanel.displayId == requestedDisplay) {
                 activePanel.mode = requestedMode;
                 activePanel.updatePanelPlacement();
-                activePanel.renderContent();
+                activePanel.renderHeaderAndContent();
                 return;
             }
             activePanel.dismiss();
@@ -223,6 +219,7 @@ public final class NotificationOverlayPanel {
         LinearLayout tabs = new LinearLayout(context);
         tabs.setOrientation(LinearLayout.HORIZONTAL);
         tabs.setPadding(0, dp(6), 0, dp(2));
+        tabs.setVisibility(mode == MODE_POWER ? View.GONE : View.VISIBLE);
         TextView notifications = makeButton("Notifications", mode == MODE_NOTIFICATIONS);
         notifications.setOnClickListener(v -> {
             mode = MODE_NOTIFICATIONS;
@@ -613,7 +610,7 @@ public final class NotificationOverlayPanel {
                             String[].class, String[].class, String.class);
                     Process process = (Process) newProcess.invoke(null,
                             new String[]{"sh", "-c", command}, null, null);
-                    return waitForCommand(process, command);
+                    if(waitForCommand(process, command)) return true;
                 }
                 shizuku.getMethod("requestPermission", int.class).invoke(null, SHIZUKU_REQUEST_CODE);
             }
