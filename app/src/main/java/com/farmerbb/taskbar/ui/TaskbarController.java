@@ -335,8 +335,22 @@ public class TaskbarController extends UIController {
             drawSysTray(context, layoutId, layout);
         }
 
-        // Dark translucent glass surface; this avoids expensive real-time blur on low-RAM devices.
-        layout.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
+        // Saku DeX Hybrid: a distinct, elevated desktop dock. Keep it translucent without
+        // real-time blur so the dock remains responsive on low-memory Android devices.
+        float dexDensity = context.getResources().getDisplayMetrics().density;
+        layout.setBackground(GlassBackgrounds.createGlassSurface(context, 22));
+        layout.setElevation(12 * dexDensity);
+        layout.setClipToPadding(false);
+        layout.setPadding(Math.round(8 * dexDensity), Math.round(4 * dexDensity),
+                Math.round(8 * dexDensity), Math.round(4 * dexDensity));
+        layout.setMinimumHeight(Math.round(52 * dexDensity));
+        layout.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        if(startButton != null) {
+            startButton.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            startButton.setPadding(Math.round(5 * dexDensity), Math.round(5 * dexDensity),
+                    Math.round(5 * dexDensity), Math.round(5 * dexDensity));
+            startButton.setContentDescription("Saku DeX app launcher");
+        }
         layout.findViewById(R.id.divider).setBackgroundColor(
                 pref.getBoolean(PREF_CENTERED_ICONS, false) ? 0 : accentColor
         );
