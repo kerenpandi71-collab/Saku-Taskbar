@@ -13,7 +13,7 @@ import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 
-/** Windows 11-inspired centered taskbar surface with touch-friendly pinned apps. */
+/** Windows 11 taskbar surface with touch-friendly pinned apps. */
 public final class MacDockView extends ViewGroup {
     private static final float MAX_ICON_WIDTH_DP = 54f;
     private static final float ITEM_HEIGHT_DP = 52f;
@@ -36,9 +36,9 @@ public final class MacDockView extends ViewGroup {
         setElevation(dp(10));
 
         GradientDrawable taskbar = new GradientDrawable();
-        taskbar.setColor(Color.argb(242, 24, 32, 46));
-        taskbar.setCornerRadius(dp(17));
-        taskbar.setStroke(Math.max(1, dp(1)), Color.argb(100, 190, 210, 235));
+        taskbar.setColor(Color.argb(224, 20, 27, 42));
+        taskbar.setCornerRadius(dp(14));
+        taskbar.setStroke(Math.max(1, dp(1)), Color.argb(88, 190, 215, 255));
         setBackground(taskbar);
         setFocusable(false);
         setClickable(false);
