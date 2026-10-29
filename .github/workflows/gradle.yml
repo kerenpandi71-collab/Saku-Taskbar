@@ -33,3 +33,13 @@ jobs:
       run: ./gradlew spotlessCheck
     - name: Run tests
       run: ./gradlew testFreeDebug
+    - name: Upload test reports for diagnosis
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Saku-Taskbar-Test-Reports
+        path: |
+          app/build/test-results/testFreeDebug/**/*.xml
+          app/build/reports/tests/testFreeDebug/**
+        if-no-files-found: warn
+        retention-days: 7
