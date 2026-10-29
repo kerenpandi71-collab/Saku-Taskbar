@@ -314,6 +314,8 @@ public class TaskbarController extends UIController {
 
         updateButton(false);
         button.setOnClickListener(v -> toggleTaskbar(true));
+        // The macOS Dock has no Taskbar collapse chevron; keep legacy actions available via broadcasts.
+        button.setVisibility(View.GONE);
 
         LinearLayout buttonLayout = layout.findViewById(altButtonConfig
                 ? R.id.hide_taskbar_button_layout_alt
@@ -925,7 +927,7 @@ public class TaskbarController extends UIController {
             }
 
             // Determine if we need to reverse the order again
-            if(TaskbarPosition.isVertical(context)) {
+            if(positionIsVertical) {
                 Collections.reverse(entries);
                 Collections.reverse(launcherAppCache);
             }
@@ -970,7 +972,8 @@ public class TaskbarController extends UIController {
                 handler.post(() -> {
                     if(numOfEntries > 0 || fullLength) {
                         ViewGroup.LayoutParams params = scrollView.getLayoutParams();
-                        calculateScrollViewParams(context, pref, params, fullLength, numOfEntries);
+                        // A macOS Dock wraps its app icons instead of stretching across the desktop.
+                        calculateScrollViewParams(context, pref, params, false, numOfEntries);
                         scrollView.setLayoutParams(params);
 
                         for(Integer key : sysTrayIconStates.keySet()) {
@@ -1000,7 +1003,7 @@ public class TaskbarController extends UIController {
                                     () -> scrollTaskbar(
                                             scrollView,
                                             taskbar,
-                                            TaskbarPosition.getTaskbarPosition(context),
+                                            POSITION_BOTTOM_LEFT,
                                             sortOrder,
                                             shouldRefreshRecents
                                     )
@@ -1040,7 +1043,7 @@ public class TaskbarController extends UIController {
         int diff = Math.round(Math.max(baseStart, baseEnd) - Math.min(baseStart, baseEnd));
         boolean startIsBigger = Math.max(baseStart, baseEnd) == baseStart;
 
-        if(TaskbarPosition.isVertical(context)) {
+        if(positionIsVertical) {
             maxScreenSize = Math.max(0, display.height
                     - U.getStatusBarHeight(context)
                     - baseTotal);
@@ -1124,9 +1127,8 @@ public class TaskbarController extends UIController {
             }
         }
 
-        boolean realMatchParent = maxRecentsSize >= maxScreenSize
-                && pref.getBoolean(PREF_COLLAPSED, false)
-                && !(TaskbarPosition.isVertical(context) && U.isChromeOs(context));
+        // The Dock's outer glass surface must remain content-sized even when its inner list scrolls.
+        boolean realMatchParent = false;
 
         if(realMatchParent != matchParent) {
             matchParent = realMatchParent;
@@ -1194,7 +1196,7 @@ public class TaskbarController extends UIController {
 
     @VisibleForTesting
     boolean needToReverseOrder(Context context, String sortOrder) {
-        switch(TaskbarPosition.getTaskbarPosition(context)) {
+        switch(POSITION_BOTTOM_LEFT) {
             case POSITION_BOTTOM_RIGHT:
             case POSITION_TOP_RIGHT:
                 return sortOrder.contains("false");
