@@ -127,6 +127,7 @@ android {
                 jvmArgs '--add-opens=java.base/java.util=ALL-UNNAMED'
                 jvmArgs '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED'
                 jvmArgs '--add-opens=java.base/java.text=ALL-UNNAMED'
+                jvmArgs '--add-opens=java.desktop/java.awt.font=ALL-UNNAMED'
 
                 testLogging {
                     events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
