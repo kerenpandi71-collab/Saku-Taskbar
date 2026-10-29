@@ -23,7 +23,6 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -39,7 +38,9 @@ import com.farmerbb.taskbar.R;
 import com.farmerbb.taskbar.util.AppEntry;
 import com.farmerbb.taskbar.util.U;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 /** macOS-inspired desktop chrome with a lightweight material fallback for unsupported blur. */
 public final class MacOSOverlayController {
@@ -212,7 +213,7 @@ public final class MacOSOverlayController {
     private void refreshStatus() {
         if(appTitle == null || timeLabel == null) return;
         refreshForegroundApp();
-        timeLabel.setText(DateFormat.getTimeFormat(context).format(new Date()));
+        timeLabel.setText(new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date()));
         updateWifiIcon();
         updateBluetoothIcon();
         updateBatteryIcon();
