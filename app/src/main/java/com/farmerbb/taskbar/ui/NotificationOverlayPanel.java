@@ -436,12 +436,8 @@ public final class NotificationOverlayPanel {
         contentLayout.addView(brightnessLabel, brightLabelParams);
         SeekBar brightness = new SeekBar(context);
         brightness.setMax(255);
-        try {
-            brightness.setProgress(Settings.System.getInt(context.getContentResolver(),
-                    Settings.System.SCREEN_BRIGHTNESS, 128));
-        } catch(Settings.SettingNotFoundException ignored) {
-            brightness.setProgress(128);
-        }
+        brightness.setProgress(Settings.System.getInt(context.getContentResolver(),
+                Settings.System.SCREEN_BRIGHTNESS, 128));
         brightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if(!fromUser) return;
