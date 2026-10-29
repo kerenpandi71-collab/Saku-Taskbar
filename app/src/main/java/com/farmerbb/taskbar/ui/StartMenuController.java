@@ -28,6 +28,7 @@ import android.content.pm.LauncherActivityInfo;
 import android.content.pm.LauncherApps;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
@@ -206,8 +207,8 @@ public class StartMenuController extends UIController {
         startMenu.setFastScrollAlwaysVisible(scrollbar);
         startMenu.setScrollBarStyle(scrollbar ? View.SCROLLBARS_OUTSIDE_INSET : View.SCROLLBARS_INSIDE_OVERLAY);
 
-        if(pref.getBoolean(PREF_TRANSPARENT_START_MENU, false))
-            startMenu.setBackgroundColor(0);
+        // The glass surface belongs to the frame behind the app grid, not each grid cell.
+        startMenu.setBackgroundColor(Color.TRANSPARENT);
 
         if(pref.getBoolean(PREF_VISUAL_FEEDBACK, true))
             startMenu.setRecyclerListener(view -> view.setBackgroundColor(0));
@@ -228,8 +229,13 @@ public class StartMenuController extends UIController {
 
         FrameLayout startMenuFrame = layout.findViewById(R.id.start_menu_frame);
         FrameLayout searchViewLayout = layout.findViewById(R.id.search_view_layout);
-        startMenuFrame.setBackgroundColor(backgroundTint);
-        searchViewLayout.setBackgroundColor(backgroundTint);
+        if(pref.getBoolean(PREF_TRANSPARENT_START_MENU, false)) {
+            startMenuFrame.setBackgroundColor(Color.TRANSPARENT);
+            searchViewLayout.setBackgroundColor(Color.TRANSPARENT);
+        } else {
+            startMenuFrame.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
+            searchViewLayout.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
+        }
 
         if(shouldShowSearchBox) {
             if(!hasHardwareKeyboard) searchView.setIconifiedByDefault(true);
@@ -325,8 +331,7 @@ public class StartMenuController extends UIController {
             });
 
             View childLayout = layout.findViewById(R.id.search_view_child_layout);
-            if(pref.getBoolean(PREF_TRANSPARENT_START_MENU, false))
-                childLayout.setBackgroundColor(0);
+            childLayout.setBackgroundColor(Color.TRANSPARENT);
 
             if(isGrid) {
                 ViewGroup.LayoutParams childLayoutParams = childLayout.getLayoutParams();
