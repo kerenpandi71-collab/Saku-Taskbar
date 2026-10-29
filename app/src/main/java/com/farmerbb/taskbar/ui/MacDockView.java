@@ -43,7 +43,7 @@ public final class MacDockView extends ViewGroup {
     }
 
     @Override
-    protected void onViewAdded(View child) {
+    public void onViewAdded(View child) {
         super.onViewAdded(child);
         child.setOnHoverListener((view, event) -> {
             int action = event.getAction();
