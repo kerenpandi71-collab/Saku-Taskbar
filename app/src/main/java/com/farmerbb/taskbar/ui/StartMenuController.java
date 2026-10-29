@@ -198,7 +198,7 @@ public class StartMenuController extends UIController {
         layout.setAlpha(0);
         layout.setPadding(GlassBackgrounds.dp(context, 24), GlassBackgrounds.dp(context, 18),
                 GlassBackgrounds.dp(context, 24), GlassBackgrounds.dp(context, 24));
-        layout.setBackground(GlassBackgrounds.createMacGlassSurface(context, 0, 214));
+        layout.setBackground(GlassBackgrounds.createWindowsSurface(context, 18, 218));
 
         View searchLayoutForOrdering = layout.findViewById(R.id.search_view_layout);
         if(searchLayoutForOrdering != null) {
@@ -251,7 +251,7 @@ public class StartMenuController extends UIController {
         FrameLayout startMenuFrame = layout.findViewById(R.id.start_menu_frame);
         FrameLayout searchViewLayout = layout.findViewById(R.id.search_view_layout);
         startMenuFrame.setBackgroundColor(Color.TRANSPARENT);
-        searchViewLayout.setBackground(GlassBackgrounds.createMacGlassSurface(context, 18, 180));
+        searchViewLayout.setBackground(GlassBackgrounds.createWindowsSurface(context, 14, 222));
 
         if(shouldShowSearchBox) {
             searchView.setIconifiedByDefault(false);
