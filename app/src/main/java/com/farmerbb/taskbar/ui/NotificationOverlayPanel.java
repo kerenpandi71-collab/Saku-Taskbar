@@ -473,10 +473,10 @@ public final class NotificationOverlayPanel {
 
         LinearLayout firstRow = new LinearLayout(context);
         firstRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView wifi = makeButton(isWifiEnabled() ? "◉  Wi-Fi\\nTerhubung" : "◉  Wi-Fi\\nMati", isWifiEnabled());
+        TextView wifi = makeButton(isWifiEnabled() ? "◉  Wi-Fi\nTerhubung" : "◉  Wi-Fi\nMati", isWifiEnabled());
         wifi.setOnClickListener(v -> executeSystemCommand(
                 "svc wifi " + (isWifiEnabled() ? "disable" : "enable"), "Wi-Fi"));
-        TextView bluetooth = makeButton(isBluetoothEnabled() ? "ᛒ  Bluetooth\\nAktif" : "ᛒ  Bluetooth\\nMati",
+        TextView bluetooth = makeButton(isBluetoothEnabled() ? "ᛒ  Bluetooth\nAktif" : "ᛒ  Bluetooth\nMati",
                 isBluetoothEnabled());
         bluetooth.setOnClickListener(v -> executeSystemCommand(
                 "svc bluetooth " + (isBluetoothEnabled() ? "disable" : "enable"), "Bluetooth"));
@@ -488,9 +488,9 @@ public final class NotificationOverlayPanel {
 
         LinearLayout secondRow = new LinearLayout(context);
         secondRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView airplane = makeButton("✈  Mode pesawat\\nPengaturan", false);
+        TextView airplane = makeButton("✈  Mode pesawat\nPengaturan", false);
         airplane.setOnClickListener(v -> launchOnDisplay(new Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)));
-        TextView display = makeButton("☾  Tampilan\\nTema & layar", false);
+        TextView display = makeButton("☾  Tampilan\nTema & layar", false);
         display.setOnClickListener(v -> launchOnDisplay(new Intent(Settings.ACTION_DISPLAY_SETTINGS)));
         LinearLayout.LayoutParams airplaneParams = new LinearLayout.LayoutParams(0, dp(58), 1f);
         airplaneParams.rightMargin = dp(6);
