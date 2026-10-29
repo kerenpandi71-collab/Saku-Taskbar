@@ -7,20 +7,17 @@ package com.farmerbb.taskbar.ui;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
-import android.os.Build;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 
-/** Floating, content-sized macOS Dock with neighbor-aware pointer magnification. */
+/** Windows 11-inspired centered taskbar surface with touch-friendly pinned apps. */
 public final class MacDockView extends ViewGroup {
-    private static final float MAX_ICON_WIDTH_DP = 76f;
-    private static final float ITEM_HEIGHT_DP = 58f;
-    private static final float ICON_GAP_DP = 5f;
-    private static final float MAGNIFICATION_RADIUS_DP = 126f;
-    private static final float MAX_SCALE = 1.42f;
+    private static final float MAX_ICON_WIDTH_DP = 54f;
+    private static final float ITEM_HEIGHT_DP = 52f;
+    private static final float ICON_GAP_DP = 7f;
 
     private final int itemHeight;
     private final int itemGap;
@@ -33,16 +30,16 @@ public final class MacDockView extends ViewGroup {
         super(context);
         itemHeight = dp(ITEM_HEIGHT_DP);
         itemGap = dp(ICON_GAP_DP);
-        setPadding(dp(12), dp(8), dp(12), dp(12));
+        setPadding(dp(10), dp(6), dp(10), dp(6));
         setClipChildren(false);
         setClipToPadding(false);
-        setElevation(dp(18));
+        setElevation(dp(10));
 
-        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[] { Color.argb(204, 82, 91, 108), Color.argb(188, 30, 35, 48) });
-        glass.setCornerRadius(dp(24));
-        glass.setStroke(Math.max(1, dp(1)), Color.argb(100, 255, 255, 255));
-        setBackground(glass);
+        GradientDrawable taskbar = new GradientDrawable();
+        taskbar.setColor(Color.argb(242, 24, 32, 46));
+        taskbar.setCornerRadius(dp(17));
+        taskbar.setStroke(Math.max(1, dp(1)), Color.argb(100, 190, 210, 235));
+        setBackground(taskbar);
         setFocusable(false);
         setClickable(false);
     }
@@ -51,12 +48,11 @@ public final class MacDockView extends ViewGroup {
     public void onViewAdded(View child) {
         super.onViewAdded(child);
         child.setOnHoverListener((view, event) -> {
-            int action = event.getAction();
-            if(action == MotionEvent.ACTION_HOVER_ENTER || action == MotionEvent.ACTION_HOVER_MOVE)
-                magnifyAt(event.getRawX());
-            else if(action == MotionEvent.ACTION_HOVER_EXIT)
-                resetMagnification();
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+            if(event.getAction() == MotionEvent.ACTION_HOVER_ENTER
+                    || event.getAction() == MotionEvent.ACTION_HOVER_MOVE) {
+                // Keep the taskbar stable: no magnification animation on low-memory devices.
+            }
+            if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N)
                 view.setPointerIcon(PointerIcon.getSystemIcon(getContext(), PointerIcon.TYPE_DEFAULT));
             return false;
         });
@@ -94,34 +90,6 @@ public final class MacDockView extends ViewGroup {
         }
     }
 
-    private void magnifyAt(float rawX) {
-        int[] location = new int[2];
-        getLocationOnScreen(location);
-        float pointerX = rawX - location[0];
-        float radius = dp(MAGNIFICATION_RADIUS_DP);
-        for(int i = 0; i < getChildCount(); i++) {
-            View child = getChildAt(i);
-            if(child.getVisibility() == GONE) continue;
-            float center = child.getLeft() + child.getWidth() / 2f;
-            float influence = Math.max(0f, 1f - Math.abs(pointerX - center) / radius);
-            float scale = 1f + (MAX_SCALE - 1f) * influence;
-            child.animate().cancel();
-            child.setPivotX(child.getWidth() / 2f);
-            child.setPivotY(child.getHeight());
-            child.animate().scaleX(scale).scaleY(scale)
-                    .translationY(-dp(18) * (scale - 1f) / (MAX_SCALE - 1f))
-                    .setDuration(90).start();
-        }
-    }
-
-    private void resetMagnification() {
-        for(int i = 0; i < getChildCount(); i++) {
-            View child = getChildAt(i);
-            child.animate().cancel();
-            child.animate().scaleX(1f).scaleY(1f).translationY(0f).setDuration(150).start();
-        }
-    }
-
     private int dp(float value) {
         return Math.round(getResources().getDisplayMetrics().density * value);
     }
@@ -132,7 +100,7 @@ public final class MacDockView extends ViewGroup {
     }
 
     @Override
-    public LayoutParams generateLayoutParams(android.util.AttributeSet attrs) {
+    public LayoutParams generateLayoutParams(AttributeSet attrs) {
         return new LayoutParams(getContext(), attrs);
     }
 
@@ -147,7 +115,7 @@ public final class MacDockView extends ViewGroup {
     }
 
     public static final class LayoutParams extends ViewGroup.LayoutParams {
-        public LayoutParams(Context context, android.util.AttributeSet attrs) { super(context, attrs); }
+        public LayoutParams(Context context, AttributeSet attrs) { super(context, attrs); }
         public LayoutParams(int width, int height) { super(width, height); }
         public LayoutParams(ViewGroup.LayoutParams source) { super(source); }
     }
