@@ -269,7 +269,6 @@ public class TaskbarController extends UIController {
 
         layout = (LinearLayout) LayoutInflater.from(U.wrapContext(context)).inflate(layoutId, null);
         taskbar = layout.findViewById(R.id.taskbar);
-        taskbar.setBackground(GlassBackgrounds.createMacGlassSurface(context, 24, 188));
         scrollView = layout.findViewById(R.id.taskbar_scrollview);
 
         int backgroundTint = U.getBackgroundTint(context);
