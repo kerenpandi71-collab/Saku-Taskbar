@@ -469,24 +469,45 @@ public final class NotificationOverlayPanel {
         contentLayout.addView(toggleHint, hintParams);
 
         LinearLayout tiles = new LinearLayout(context);
-        tiles.setOrientation(LinearLayout.HORIZONTAL);
-        TextView wifi = makeButton(isWifiEnabled() ? "Wi-Fi  ·  On" : "Wi-Fi  ·  Off", isWifiEnabled());
+        tiles.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout firstRow = new LinearLayout(context);
+        firstRow.setOrientation(LinearLayout.HORIZONTAL);
+        TextView wifi = makeButton(isWifiEnabled() ? "◉  Wi-Fi\\nTerhubung" : "◉  Wi-Fi\\nMati", isWifiEnabled());
         wifi.setOnClickListener(v -> executeSystemCommand(
                 "svc wifi " + (isWifiEnabled() ? "disable" : "enable"), "Wi-Fi"));
-        TextView bluetooth = makeButton(isBluetoothEnabled() ? "Bluetooth  ·  On" : "Bluetooth  ·  Off",
+        TextView bluetooth = makeButton(isBluetoothEnabled() ? "ᛒ  Bluetooth\\nAktif" : "ᛒ  Bluetooth\\nMati",
                 isBluetoothEnabled());
         bluetooth.setOnClickListener(v -> executeSystemCommand(
                 "svc bluetooth " + (isBluetoothEnabled() ? "disable" : "enable"), "Bluetooth"));
-        tiles.addView(wifi, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        LinearLayout.LayoutParams bluetoothParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        bluetoothParams.leftMargin = dp(8);
-        tiles.addView(bluetooth, bluetoothParams);
+        LinearLayout.LayoutParams wifiParams = new LinearLayout.LayoutParams(0, dp(62), 1f);
+        wifiParams.rightMargin = dp(6);
+        firstRow.addView(wifi, wifiParams);
+        firstRow.addView(bluetooth, new LinearLayout.LayoutParams(0, dp(62), 1f));
+        tiles.addView(firstRow);
+
+        LinearLayout secondRow = new LinearLayout(context);
+        secondRow.setOrientation(LinearLayout.HORIZONTAL);
+        TextView airplane = makeButton("✈  Mode pesawat\\nPengaturan", false);
+        airplane.setOnClickListener(v -> launchOnDisplay(new Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)));
+        TextView display = makeButton("☾  Tampilan\\nTema & layar", false);
+        display.setOnClickListener(v -> launchOnDisplay(new Intent(Settings.ACTION_DISPLAY_SETTINGS)));
+        LinearLayout.LayoutParams airplaneParams = new LinearLayout.LayoutParams(0, dp(58), 1f);
+        airplaneParams.rightMargin = dp(6);
+        airplaneParams.topMargin = dp(6);
+        secondRow.addView(airplane, airplaneParams);
+        LinearLayout.LayoutParams displayParams = new LinearLayout.LayoutParams(0, dp(58), 1f);
+        displayParams.topMargin = dp(6);
+        secondRow.addView(display, displayParams);
+        tiles.addView(secondRow);
+
         LinearLayout.LayoutParams tileParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         tileParams.topMargin = dp(6);
         contentLayout.addView(tiles, tileParams);
 
-        TextView note = makeText("Wi-Fi and Bluetooth controls require Shizuku or root access.", 11,
+        TextView note = makeText("Kontrol Wi-Fi dan Bluetooth memerlukan Shizuku atau akses root. "
+                + "Mode pesawat dan tampilan membuka pengaturan Android.", 11,
                 Color.LTGRAY, false);
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
