@@ -282,6 +282,7 @@ public class TaskbarController extends UIController {
 
         startButton = layout.findViewById(R.id.start_button);
         drawStartButton(context, startButton, pref);
+        addPowerMenuButton(accentColor);
 
         refreshInterval = (int) (Float.parseFloat(pref.getString(PREF_REFRESH_FREQUENCY, "1")) * 1000);
         if(refreshInterval == 0)
@@ -334,7 +335,8 @@ public class TaskbarController extends UIController {
             drawSysTray(context, layoutId, layout);
         }
 
-        layout.setBackgroundColor(backgroundTint);
+        // Dark translucent glass surface; this avoids expensive real-time blur on low-RAM devices.
+        layout.setBackground(GlassBackgrounds.createGlassSurface(context, 18));
         layout.findViewById(R.id.divider).setBackgroundColor(
                 pref.getBoolean(PREF_CENTERED_ICONS, false) ? 0 : accentColor
         );
@@ -653,6 +655,28 @@ public class TaskbarController extends UIController {
         return searchInterval;
     }
 
+    private void addPowerMenuButton(int accentColor) {
+        if(U.isLibrary(context) || positionIsVertical || layout == null || startButton == null) return;
+
+        int index = layout.indexOfChild(startButton);
+        if(index < 0) return;
+
+        TextView powerButton = new TextView(context);
+        powerButton.setText("⏻");
+        powerButton.setTextSize(23);
+        powerButton.setGravity(Gravity.CENTER);
+        powerButton.setTextColor(Color.WHITE);
+        powerButton.setContentDescription("Power menu");
+        powerButton.setBackground(GlassBackgrounds.createPill(context, false));
+
+        int iconSize = context.getResources().getDimensionPixelSize(R.dimen.tb_icon_size);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(iconSize, iconSize);
+        params.leftMargin = context.getResources().getDimensionPixelSize(R.dimen.tb_icon_size) / 10;
+        params.rightMargin = context.getResources().getDimensionPixelSize(R.dimen.tb_icon_size) / 10;
+        layout.addView(powerButton, index, params);
+        powerButton.setOnClickListener(v -> NotificationOverlayPanel.showPowerMenu(context, v));
+    }
+
     private void openSettingsOnTaskbarDisplay(Context context, Intent intent, View anchor) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -693,57 +717,28 @@ public class TaskbarController extends UIController {
         sysTrayLayout.setLayoutParams(sysTrayParams);
 
         if(!U.isLibrary(context)) {
-            // Wi-Fi and Bluetooth indicators can open their Settings screens on the
-            // display hosting Taskbar. The system notification/Quick Settings shade
-            // remains controlled by Android's AccessibilityService global actions.
-            sysTrayLayout.findViewById(R.id.wifi).setOnClickListener(v ->
-                    openSettingsOnTaskbarDisplay(context, new Intent(Settings.ACTION_WIFI_SETTINGS), v));
-            sysTrayLayout.findViewById(R.id.bluetooth).setOnClickListener(v ->
-                    openSettingsOnTaskbarDisplay(context, new Intent(Settings.ACTION_BLUETOOTH_SETTINGS), v));
+            // Keep the notification center and quick settings on the display hosting Taskbar.
+            // Do not invoke Android's global shade actions here: those commonly target display 0.
+            View wifi = sysTrayLayout.findViewById(R.id.wifi);
+            View bluetooth = sysTrayLayout.findViewById(R.id.bluetooth);
+            wifi.setOnClickListener(v -> NotificationOverlayPanel.showQuickSettings(context, v));
+            bluetooth.setOnClickListener(v -> NotificationOverlayPanel.showQuickSettings(context, v));
 
-            sysTrayLayout.setOnClickListener(v -> {
-                U.sendAccessibilityAction(context, AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS, () -> {
-                    if(LauncherHelper.getInstance().isOnSecondaryHomeScreen(context)) {
-                        U.showToast(context, R.string.tb_opening_notification_tray);
-                        U.sendBroadcast(context, ACTION_UNDIM_SCREEN);
-                    }
-                });
+            sysTrayLayout.setOnClickListener(v ->
+                    NotificationOverlayPanel.toggleNotifications(context, v));
 
-                if(U.shouldCollapse(context, false))
-                    hideTaskbar(true);
+            sysTrayLayout.setOnLongClickListener(v -> {
+                NotificationOverlayPanel.showQuickSettings(context, v);
+                return true;
             });
 
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                sysTrayLayout.setOnLongClickListener(v -> {
-                    U.sendAccessibilityAction(context, AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS, () -> {
-                        if(LauncherHelper.getInstance().isOnSecondaryHomeScreen(context)) {
-                            U.showToast(context, R.string.tb_opening_quick_settings);
-                            U.sendBroadcast(context, ACTION_UNDIM_SCREEN);
-                        }
-                    });
-
-                    if(U.shouldCollapse(context, false))
-                        hideTaskbar(true);
-
-                    return true;
-                });
-
-                sysTrayLayout.setOnGenericMotionListener((view, motionEvent) -> {
-                    if(motionEvent.getAction() == MotionEvent.ACTION_BUTTON_PRESS
-                            && motionEvent.getButtonState() == MotionEvent.BUTTON_SECONDARY) {
-                        U.sendAccessibilityAction(context, AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS, () -> {
-                            if(LauncherHelper.getInstance().isOnSecondaryHomeScreen(context)) {
-                                U.showToast(context, R.string.tb_opening_quick_settings);
-                                U.sendBroadcast(context, ACTION_UNDIM_SCREEN);
-                            }
-                        });
-
-                        if(U.shouldCollapse(context, false))
-                            hideTaskbar(true);
-                    }
-                    return true;
-                });
-            }
+            sysTrayLayout.setOnGenericMotionListener((view, motionEvent) -> {
+                if(motionEvent.getAction() == MotionEvent.ACTION_BUTTON_PRESS
+                        && motionEvent.getButtonState() == MotionEvent.BUTTON_SECONDARY) {
+                    NotificationOverlayPanel.showQuickSettings(context, view);
+                }
+                return true;
+            });
         }
 
         notificationCountCircle = sysTrayLayout.findViewById(R.id.notification_count_circle);
