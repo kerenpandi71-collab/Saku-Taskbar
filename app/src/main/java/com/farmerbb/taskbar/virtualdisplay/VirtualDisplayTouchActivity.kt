@@ -1670,7 +1670,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         val keyboardParams = keyboardPanel.layoutParams as? FrameLayout.LayoutParams
 
         if (landscape) {
-            // Three fixed columns: keyboard | virtual screen | touchpad.
+            // Three fixed columns: touchpad | virtual screen | keyboard.
             // The SurfaceView keeps its source aspect ratio and stays centered.
             val sideGap = dp(6)
             val keyboardWidth = ((rootWidth * 30 / 100) * keyboardWidthPercent / 100).coerceIn(dp(140), (rootWidth * 38 / 100).coerceAtLeast(dp(140)))
@@ -1701,8 +1701,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                     it.topMargin = (maxY * touchpadLandscapeYPercent / 100f).toInt()
                     it.rightMargin = 0; it.bottomMargin = 0
                 } else {
-                    it.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-                    it.leftMargin = 0; it.rightMargin = sideGap; it.topMargin = 0; it.bottomMargin = 0
+                    it.gravity = Gravity.LEFT or Gravity.CENTER_VERTICAL
+                    it.leftMargin = sideGap; it.rightMargin = 0; it.topMargin = 0; it.bottomMargin = 0
                 }
                 bottomPanel.layoutParams = it
             }
@@ -1710,8 +1710,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                 keyboardPanel.visibility = if (keyboardPanelVisible) View.VISIBLE else View.GONE
                 it.width = keyboardWidth
                 it.height = dp(keyboardHeightDp).coerceAtMost(rootHeight)
-                it.gravity = Gravity.LEFT or Gravity.CENTER_VERTICAL
-                it.leftMargin = sideGap; it.rightMargin = 0; it.topMargin = 0; it.bottomMargin = 0
+                it.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+                it.leftMargin = 0; it.rightMargin = sideGap; it.topMargin = 0; it.bottomMargin = 0
                 keyboardHasCustomPosition = false
                 keyboardPanel.layoutParams = it
             }
@@ -1734,7 +1734,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             }
             panelParams?.let {
                 val panelHeight = (rootHeight * 30 / 100).coerceAtLeast(dp(120))
-                it.width = rootWidth - dp(14)
+                it.width = (rootWidth * 45 / 100).coerceIn(dp(150).coerceAtMost(rootWidth), rootWidth)
                 it.height = panelHeight
                 if (touchpadPortraitHasCustomPosition) {
                     val maxX = (rootWidth - it.width).coerceAtLeast(0)
@@ -1744,10 +1744,10 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                     it.topMargin = (maxY * touchpadPortraitYPercent / 100f).toInt()
                     it.rightMargin = 0; it.bottomMargin = 0
                 } else {
-                    it.gravity = Gravity.TOP
+                    it.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
                     it.topMargin = (rootHeight * 70 / 100).coerceAtMost(rootHeight - panelHeight)
                     it.bottomMargin = 0
-                    it.leftMargin = dp(7); it.rightMargin = dp(7)
+                    it.leftMargin = 0; it.rightMargin = 0
                 }
                 bottomPanel.layoutParams = it
             }
