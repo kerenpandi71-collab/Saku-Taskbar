@@ -752,6 +752,44 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
         }
     }
 
+    /** Returns a bounded diagnostic snapshot of tasks reported on the requested display. */
+    override fun getRecentTasks(displayId: Int): String {
+        if (displayId !in 0..10000) return "Display ID tidak valid."
+        return try {
+            val result = runShizukuShell("dumpsys activity activities", timeoutMs = 7000L, maxCharacters = 24000)
+            if (result.first != 0) {
+                lastError = "Tidak dapat membaca daftar task: ${result.second.take(500)}"
+                return lastError
+            }
+            val lines = result.second.lines()
+            val taskHeader = Regex("""(?i).*Task\{[^}]*#([0-9]+)[^}]*\}.*""")
+            val displayMarker = Regex("""(?i)(?:mDisplayId|displayId|display id)\s*[=:]\s*([0-9]+)""")
+            val blocks = mutableListOf<String>()
+            var block = mutableListOf<String>()
+            fun flush() {
+                if (block.isEmpty()) return
+                val joined = block.joinToString("\n")
+                val displayIds = displayMarker.findAll(joined).mapNotNull { it.groupValues.getOrNull(1)?.toIntOrNull() }.toSet()
+                if (displayId in displayIds) {
+                    val taskId = taskHeader.find(joined)?.groupValues?.getOrNull(1)
+                    val component = Regex("""[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+""").find(joined)?.value
+                    if (taskId != null) blocks += "taskId=$taskId" + (component?.let { " • $it" } ?: "")
+                }
+                block = mutableListOf()
+            }
+            for (line in lines) {
+                if (taskHeader.containsMatchIn(line)) flush()
+                if (block.size < 80) block += line
+            }
+            flush()
+            lastError = "Recent display $displayId • ${blocks.size} task terdeteksi."
+            blocks.distinct().take(20).joinToString("\n").ifBlank { "Belum ada task yang terdeteksi pada display $displayId." }
+        } catch (error: Throwable) {
+            lastError = "Gagal membaca Recent: ${error.message ?: error.javaClass.simpleName}"
+            lastError
+        }
+    }
+
     override fun getLastError(): String = lastError
 
     override fun destroy() {
