@@ -737,7 +737,7 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
         return try {
             val result = runShizukuShell("su -c id", timeoutMs = 30000L, maxCharacters = 500)
             val output = result.second.trim()
-            val granted = result.first == 0 && Regex("""(?:^|\\s)uid=0(?:\\(|\\s|$)""").containsMatchIn(output)
+            val granted = result.first == 0 && Regex("""(?:^|\s)uid=0(?:\(|\s|$)""").containsMatchIn(output)
             lastError = if (granted) {
                 "Akses root aktif • $output"
             } else {
