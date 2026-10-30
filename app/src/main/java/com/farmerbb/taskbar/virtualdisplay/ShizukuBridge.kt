@@ -299,6 +299,15 @@ class ShizukuBridge(
         }
     }
 
+    fun getRecentTasks(displayId: Int): String {
+        return try {
+            remote?.getRecentTasks(displayId) ?: "Shizuku UserService belum terhubung."
+        } catch (error: Throwable) {
+            Log.e(TAG, "getRecentTasks failed", error)
+            "Gagal membaca Recent: ${error.cause?.message ?: error.message}"
+        }
+    }
+
     fun getLastError(): String = try {
         remote?.getLastError() ?: "Shizuku UserService belum terhubung."
     } catch (error: Throwable) {
