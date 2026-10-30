@@ -46,6 +46,16 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
     private var targetDpi = 160
     private var cursorSensitivity = 0.45f
     private var touchpadHeightPercent = 36
+    private var touchpadWidthPercent = 27
+    private var touchpadLandscapeHeightPercent = 94
+    private var touchpadHasCustomPosition = false
+    private var touchpadPositionXPercent = 100
+    private var touchpadPositionYPercent = 50
+    private var touchpadDragStartX = 0f
+    private var touchpadDragStartY = 0f
+    private var touchpadDragOriginX = 0
+    private var touchpadDragOriginY = 0
+    private lateinit var touchpadWidthValue: TextView
     private lateinit var resolutionWidthInput: EditText
     private lateinit var resolutionHeightInput: EditText
     private lateinit var resolutionDpiInput: EditText
@@ -141,6 +151,12 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         keyboardHasCustomPosition = keyboardPrefs.getBoolean("custom_position", false)
         keyboardPositionX = keyboardPrefs.getInt("position_x", 0)
         keyboardPositionY = keyboardPrefs.getInt("position_y", 0)
+        val touchpadPrefs = getSharedPreferences("saku_desktop_touchpad", Context.MODE_PRIVATE)
+        touchpadWidthPercent = touchpadPrefs.getInt("width_percent", 27).coerceIn(18, 45)
+        touchpadLandscapeHeightPercent = touchpadPrefs.getInt("height_percent", 94).coerceIn(40, 100)
+        touchpadHasCustomPosition = touchpadPrefs.getBoolean("custom_position", false)
+        touchpadPositionXPercent = touchpadPrefs.getInt("position_x_percent", 100).coerceIn(0, 100)
+        touchpadPositionYPercent = touchpadPrefs.getInt("position_y_percent", 50).coerceIn(0, 100)
         // Keep the IME host on the phone display; never auto-open Gboard on Activity launch.
         window.setSoftInputMode(
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING or
@@ -324,6 +340,25 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         }
         controlRow.addView(sensitivitySeekBar, LinearLayout.LayoutParams(0, dp(25), 1f))
         topBar.addView(controlRow)
+        val touchpadWidthRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        touchpadWidthValue = TextView(this).apply { text = "Lebar TP ${touchpadWidthPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
+        touchpadWidthRow.addView(touchpadWidthValue, LinearLayout.LayoutParams(dp(84), dp(25)))
+        val touchpadWidthSeekBar = SeekBar(this).apply {
+            max = 27; progress = touchpadWidthPercent - 18
+            contentDescription = "Lebar touchpad landscape"
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    touchpadWidthPercent = 18 + progress
+                    touchpadWidthValue.text = "Lebar TP ${touchpadWidthPercent}%"
+                    persistTouchpadSettings()
+                    updateDesktopLayout(root.width, root.height)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+                override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+            })
+        }
+        touchpadWidthRow.addView(touchpadWidthSeekBar, LinearLayout.LayoutParams(0, dp(25), 1f))
+        topBar.addView(touchpadWidthRow)
         status = TextView(this).apply {
             text = "Hubungkan Shizuku, lalu tekan Mulai."
             textSize = 9f
@@ -572,7 +607,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         }
         val panelHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         panelHeader.addView(TextView(this).apply {
-            text = "TRACKPAD • 1 jari kursor / tap klik / 2 jari scroll"
+            text = "TRACKPAD • 1 jari kursor / tap klik / 2 jari scroll   ⋮⋮"
             textSize = 9f
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
@@ -593,6 +628,39 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             topBar.visibility = View.VISIBLE
             status.text = "Pengaturan resolusi dan DPI tersedia di panel Saku Desktop."
         }, LinearLayout.LayoutParams(dp(38), dp(28)))
+        panelHeader.setOnTouchListener { _, event ->
+            if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) return@setOnTouchListener false
+            val params = bottomPanel.layoutParams as? FrameLayout.LayoutParams ?: return@setOnTouchListener false
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchpadHasCustomPosition = true
+                    touchpadDragStartX = event.rawX
+                    touchpadDragStartY = event.rawY
+                    touchpadDragOriginX = bottomPanel.x.toInt()
+                    touchpadDragOriginY = bottomPanel.y.toInt()
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val maxX = (root.width - bottomPanel.width).coerceAtLeast(0)
+                    val maxY = (root.height - bottomPanel.height).coerceAtLeast(0)
+                    params.gravity = Gravity.TOP or Gravity.START
+                    params.leftMargin = (touchpadDragOriginX + event.rawX - touchpadDragStartX).toInt().coerceIn(0, maxX)
+                    params.topMargin = (touchpadDragOriginY + event.rawY - touchpadDragStartY).toInt().coerceIn(0, maxY)
+                    params.rightMargin = 0; params.bottomMargin = 0
+                    root.updateViewLayout(bottomPanel, params)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val maxX = (root.width - bottomPanel.width).coerceAtLeast(1)
+                    val maxY = (root.height - bottomPanel.height).coerceAtLeast(1)
+                    touchpadPositionXPercent = (bottomPanel.x / maxX * 100).toInt().coerceIn(0, 100)
+                    touchpadPositionYPercent = (bottomPanel.y / maxY * 100).toInt().coerceIn(0, 100)
+                    persistTouchpadSettings()
+                    true
+                }
+                else -> true
+            }
+        }
         bottomPanel.addView(panelHeader)
         val virtualNavRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         virtualNavRow.addView(actionButton("◀ Back") { sendVirtualNavigationKey(android.view.KeyEvent.KEYCODE_BACK) },
@@ -1551,9 +1619,9 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             // Three fixed columns: keyboard | virtual screen | touchpad.
             // The SurfaceView keeps its source aspect ratio and stays centered.
             val sideGap = dp(6)
-            val keyboardWidth = (rootWidth * 30 / 100).coerceAtLeast(dp(190))
-            val touchWidth = (rootWidth * 27 / 100).coerceAtLeast(dp(170))
-            val centerWidth = (rootWidth - keyboardWidth - touchWidth - sideGap * 4).coerceAtLeast(dp(180))
+            val keyboardWidth = ((rootWidth * 30 / 100) * keyboardWidthPercent / 100).coerceIn(dp(140), (rootWidth * 38 / 100).coerceAtLeast(dp(140)))
+            val touchWidth = (rootWidth * touchpadWidthPercent / 100).coerceIn(dp(120), (rootWidth * 45 / 100).coerceAtLeast(dp(120)))
+            val centerWidth = (rootWidth - keyboardWidth - touchWidth - sideGap * 4).coerceAtLeast(dp(120))
             val maxCenterHeight = (rootHeight * 92 / 100).coerceAtLeast(dp(100))
             var desktopWidth = centerWidth
             var desktopHeight = (desktopWidth / aspect).toInt()
@@ -1570,15 +1638,24 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             }
             panelParams?.let {
                 it.width = touchWidth
-                it.height = (rootHeight * 94 / 100).coerceAtLeast(dp(130))
-                it.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
-                it.leftMargin = 0; it.rightMargin = sideGap; it.topMargin = 0; it.bottomMargin = 0
+                it.height = (rootHeight * touchpadLandscapeHeightPercent / 100).coerceIn(dp(130), rootHeight)
+                if (touchpadHasCustomPosition) {
+                    val maxX = (rootWidth - it.width).coerceAtLeast(0)
+                    val maxY = (rootHeight - it.height).coerceAtLeast(0)
+                    it.gravity = Gravity.TOP or Gravity.START
+                    it.leftMargin = (maxX * touchpadPositionXPercent / 100f).toInt()
+                    it.topMargin = (maxY * touchpadPositionYPercent / 100f).toInt()
+                    it.rightMargin = 0; it.bottomMargin = 0
+                } else {
+                    it.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+                    it.leftMargin = 0; it.rightMargin = sideGap; it.topMargin = 0; it.bottomMargin = 0
+                }
                 bottomPanel.layoutParams = it
             }
             keyboardParams?.let {
                 keyboardPanel.visibility = if (keyboardPanelVisible) View.VISIBLE else View.GONE
                 it.width = keyboardWidth
-                it.height = (rootHeight * 94 / 100).coerceAtLeast(dp(170))
+                it.height = dp(keyboardHeightDp).coerceAtMost(rootHeight)
                 it.gravity = Gravity.LEFT or Gravity.CENTER_VERTICAL
                 it.leftMargin = sideGap; it.rightMargin = 0; it.topMargin = 0; it.bottomMargin = 0
                 keyboardHasCustomPosition = false
@@ -1638,6 +1715,16 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         getSharedPreferences("saku_desktop_keyboard", Context.MODE_PRIVATE).edit()
             .putInt("width_percent", keyboardWidthPercent)
             .putInt("height_dp", keyboardHeightDp)
+            .apply()
+    }
+
+    private fun persistTouchpadSettings() {
+        getSharedPreferences("saku_desktop_touchpad", Context.MODE_PRIVATE).edit()
+            .putInt("width_percent", touchpadWidthPercent)
+            .putInt("height_percent", touchpadLandscapeHeightPercent)
+            .putBoolean("custom_position", touchpadHasCustomPosition)
+            .putInt("position_x_percent", touchpadPositionXPercent)
+            .putInt("position_y_percent", touchpadPositionYPercent)
             .apply()
     }
 
