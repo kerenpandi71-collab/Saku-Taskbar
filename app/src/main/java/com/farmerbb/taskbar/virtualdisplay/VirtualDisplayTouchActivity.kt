@@ -973,6 +973,26 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             status.text = "Mulai virtual display dahulu."
             return
         }
+
+        // APP_SWITCH is a system-policy key. Sending it through the generic
+        // injected KeyEvent path can invoke Recents on the host (display 0).
+        // Route this one key through Android's display-targeted input command.
+        if (keyCode == android.view.KeyEvent.KEYCODE_APP_SWITCH) {
+            keyboardInputExecutor.execute {
+                val accepted = shizukuBridge.runShellCommand("input -d $displayId keyevent ${android.view.KeyEvent.KEYCODE_APP_SWITCH}")
+                runOnUiThread {
+                    if (!accepted) {
+                        status.text = "Recent gagal dikirim ke display virtual."
+                        appendRuntimeLog("Recent display $displayId gagal: ${shizukuBridge.getLastError()}")
+                    } else {
+                        status.text = "Perintah Recent dikirim ke display virtual $displayId."
+                    }
+                }
+            }
+            return
+        }
+
+        // Back and Home keep using the existing virtual-display key injection.
         sendVirtualKey(keyCode)
     }
 
