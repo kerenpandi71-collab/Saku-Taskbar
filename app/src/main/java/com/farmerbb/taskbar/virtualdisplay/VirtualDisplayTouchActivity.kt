@@ -308,15 +308,17 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, dp(32), 1f))
         topBar.addView(resolutionRow)
         val controlRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        touchpadSizeValue = TextView(this).apply { text = "Area 36%"; textSize = 9f; setTextColor(Color.WHITE) }
-        controlRow.addView(touchpadSizeValue, LinearLayout.LayoutParams(dp(66), dp(25)))
+        touchpadSizeValue = TextView(this).apply { text = "Tinggi TP ${touchpadLandscapeHeightPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
+        controlRow.addView(touchpadSizeValue, LinearLayout.LayoutParams(dp(76), dp(25)))
         touchpadSizeSeekBar = SeekBar(this).apply {
-            max = 30; progress = 16
-            contentDescription = "Ukuran area touchpad"
+            max = 60; progress = touchpadLandscapeHeightPercent - 40
+            contentDescription = "Tinggi touchpad landscape"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     touchpadHeightPercent = 20 + progress
-                    touchpadSizeValue.text = "Area ${touchpadHeightPercent}%"
+                    touchpadLandscapeHeightPercent = 40 + progress
+                    touchpadSizeValue.text = "Tinggi TP ${touchpadLandscapeHeightPercent}%"
+                    persistTouchpadSettings()
                     updateDesktopLayout(root.width, root.height)
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
