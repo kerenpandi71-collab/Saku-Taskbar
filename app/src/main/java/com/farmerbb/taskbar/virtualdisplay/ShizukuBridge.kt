@@ -102,7 +102,8 @@ class ShizukuBridge(
         val permissionGranted = try {
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         } catch (error: Throwable) {
-            onStatus("Belum dapat memeriksa izin Shizuku: ${error.message ?: error.javaClass.simpleName}")
+            val reason = error.message ?: error.javaClass.simpleName
+            onStatus("Belum dapat memeriksa izin Shizuku: $reason")
             false
         }
         if (!permissionGranted) {
