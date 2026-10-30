@@ -1,5 +1,7 @@
 package com.farmerbb.taskbar.virtualdisplay
 
+import android.app.AlertDialog
+
 import android.graphics.Canvas
 import android.graphics.Paint
 import java.util.concurrent.Executors
