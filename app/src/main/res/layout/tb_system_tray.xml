@@ -18,11 +18,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="@dimen/tb_icon_size"
+    android:gravity="center_vertical"
+    android:paddingStart="5dp"
+    android:paddingEnd="5dp"
     tools:background="#0000FF">
 
     <TextView
         android:id="@+id/time_left"
-        android:layout_width="84dp"
+        android:layout_width="72dp"
         android:layout_height="match_parent"
         android:gravity="center"
         android:textSize="15.499dp"
