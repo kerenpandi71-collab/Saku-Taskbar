@@ -295,10 +295,27 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
             val coords = Array(sortedIds.size) { i -> MotionEvent.PointerCoords().apply {
                 x = points[i].first.toFloat()
                 y = points[i].second.toFloat()
-                pressure = if (masked == MotionEvent.ACTION_UP || masked == MotionEvent.ACTION_CANCEL) 0f else 1f
+                pressure = if (
+                    masked == MotionEvent.ACTION_UP || masked == MotionEvent.ACTION_CANCEL
+                ) 0f else 1f
                 size = 1f
             } }
-            event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), sortedAction, sortedIds.size, props, coords, 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+            event = MotionEvent.obtain(
+                downTime,
+                SystemClock.uptimeMillis(),
+                sortedAction,
+                sortedIds.size,
+                props,
+                coords,
+                0,
+                0,
+                1f,
+                1f,
+                0,
+                0,
+                InputDevice.SOURCE_TOUCHSCREEN,
+                0
+            )
             setDisplayIdMethod.invoke(event, displayId)
             val accepted = injectInputEventMethod.invoke(inputManagerService, event, INJECT_WAIT_FOR_RESULT) as? Boolean ?: false
             lastError = if (accepted) "MULTITOUCH accepted • display=$displayId • pointers=${sortedIds.size} • action=$sortedAction" else "MULTITOUCH rejected • display=$displayId • pointers=${sortedIds.size} • action=$sortedAction"
