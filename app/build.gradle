@@ -56,6 +56,8 @@ android {
 
     buildFeatures {
         buildConfig true
+        // The virtual display Shizuku service uses a generated Binder interface.
+        aidl true
     }
 
     compileOptions {
