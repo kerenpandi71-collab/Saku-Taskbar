@@ -17,14 +17,14 @@ public final class GlassBackgrounds {
     private GlassBackgrounds() {}
 
     public static GradientDrawable createGlassSurface(Context context, float radiusDp) {
-        return createGlassSurface(context, radiusDp, Color.argb(232, 22, 27, 39));
+        return createGlassSurface(context, radiusDp, Color.argb(153, 18, 20, 25));
     }
 
     public static GradientDrawable createGlassSurface(Context context, float radiusDp, int fillColor) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.RECTANGLE);
         drawable.setCornerRadius(dp(context, radiusDp));
-        drawable.setColor(withAlpha(fillColor, 232));
+        drawable.setColor(withAlpha(fillColor, 153));
         drawable.setStroke(Math.max(1, dp(context, 1)), Color.argb(64, 255, 255, 255));
         return drawable;
     }
@@ -34,8 +34,8 @@ public final class GlassBackgrounds {
         drawable.setShape(GradientDrawable.RECTANGLE);
         drawable.setCornerRadius(dp(context, 999));
         drawable.setColor(selected
-                ? Color.argb(220, 62, 101, 166)
-                : Color.argb(120, 255, 255, 255));
+                ? Color.argb(230, 38, 105, 210)
+                : Color.argb(90, 255, 255, 255));
         drawable.setStroke(Math.max(1, dp(context, 1)),
                 selected ? Color.argb(135, 160, 194, 255) : Color.argb(48, 255, 255, 255));
         return drawable;
