@@ -114,7 +114,8 @@ class ShizukuBridge(
                     onStatus("Menunggu izin Shizuku…")
                 } catch (error: Throwable) {
                     permissionRequestPending = false
-                    onStatus("Tidak dapat meminta izin Shizuku: ${error.message ?: error.javaClass.simpleName}")
+                    val reason = error.message ?: error.javaClass.simpleName
+                    onStatus("Tidak dapat meminta izin Shizuku: $reason")
                     finishPending(false)
                 }
             }
