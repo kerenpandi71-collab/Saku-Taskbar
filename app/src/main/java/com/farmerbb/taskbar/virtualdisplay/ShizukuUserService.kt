@@ -772,9 +772,9 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                 timeoutMs = 8000L,
                 maxCharacters = 80000
             )
-            val taskHeader = Regex("""(?i)Task\\{[^}]*?#([0-9]+)[^}]*?}""")
+            val taskHeader = Regex("""(?i)Task\{[^}]*?#([0-9]+)[^}]*?}""")
             val displayMarker = Regex(
-                """(?i)(?:mDisplayId|displayId|display\\s*id)\\s*[=:]\\s*([0-9]+)|display\\s*#\\s*([0-9]+)"""
+                """(?i)(?:mDisplayId|displayId|display\s*id)\s*[=:]\s*([0-9]+)|display\s*#\s*([0-9]+)"""
             )
             val componentPattern = Regex("""[A-Za-z0-9_.$]+/[A-Za-z0-9_.$]+""")
             val found = linkedMapOf<Int, String>()
@@ -790,11 +790,11 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
 
             fun flushTask() {
                 val id = currentTaskId ?: return
-                val joined = (contextLines + taskLines).joinToString("\\n")
-                val ownIds = idsIn(taskLines.joinToString("\\n"))
-                val contextIds = idsIn(contextLines.joinToString("\\n"))
+                val joined = (contextLines + taskLines).joinToString("\n")
+                val ownIds = idsIn(taskLines.joinToString("\n"))
+                val contextIds = idsIn(contextLines.joinToString("\n"))
                 if (displayId in ownIds || (ownIds.isEmpty() && displayId in contextIds)) {
-                    val component = componentPattern.find(taskLines.joinToString("\\n"))?.value
+                    val component = componentPattern.find(taskLines.joinToString("\n"))?.value
                         ?: componentPattern.find(joined)?.value
                     found[id] = "taskId=$id" + (component?.let { " • $it" } ?: "")
                 }
@@ -836,7 +836,7 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
 
             if (found.isNotEmpty()) {
                 lastError = "Recent display $displayId • ${found.size} task terbaca."
-                found.values.take(30).joinToString("\\n")
+                found.values.take(30).joinToString("\n")
             } else {
                 val totalActivityTasks = taskHeader.findAll(activities.second).count()
                 lastError = if (totalActivityTasks > 0) {
