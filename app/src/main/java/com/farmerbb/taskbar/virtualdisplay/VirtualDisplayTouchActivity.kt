@@ -647,32 +647,52 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             status.text = "Pengaturan resolusi dan DPI tersedia di panel Saku Desktop."
         }, LinearLayout.LayoutParams(dp(38), dp(28)))
         touchpadMoveHandle.setOnTouchListener { _, event ->
-            if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) return@setOnTouchListener false
-            val params = bottomPanel.layoutParams as? FrameLayout.LayoutParams ?: return@setOnTouchListener false
+            if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+                return@setOnTouchListener false
+            }
+            val params = bottomPanel.layoutParams as? FrameLayout.LayoutParams
+                ?: return@setOnTouchListener false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    // Convert RIGHT/CENTER gravity to explicit parent coordinates first.
+                    // Using x/y while gravity is RIGHT can produce a stale origin on some devices.
                     touchpadHasCustomPosition = true
+                    touchpadDragOriginX = bottomPanel.left.coerceIn(
+                        0, (root.width - bottomPanel.width).coerceAtLeast(0)
+                    )
+                    touchpadDragOriginY = bottomPanel.top.coerceIn(
+                        0, (root.height - bottomPanel.height).coerceAtLeast(0)
+                    )
+                    params.gravity = Gravity.TOP or Gravity.START
+                    params.leftMargin = touchpadDragOriginX
+                    params.topMargin = touchpadDragOriginY
+                    params.rightMargin = 0
+                    params.bottomMargin = 0
+                    root.updateViewLayout(bottomPanel, params)
                     touchpadDragStartX = event.rawX
                     touchpadDragStartY = event.rawY
-                    touchpadDragOriginX = bottomPanel.x.toInt()
-                    touchpadDragOriginY = bottomPanel.y.toInt()
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val maxX = (root.width - bottomPanel.width).coerceAtLeast(0)
                     val maxY = (root.height - bottomPanel.height).coerceAtLeast(0)
                     params.gravity = Gravity.TOP or Gravity.START
-                    params.leftMargin = (touchpadDragOriginX + event.rawX - touchpadDragStartX).toInt().coerceIn(0, maxX)
-                    params.topMargin = (touchpadDragOriginY + event.rawY - touchpadDragStartY).toInt().coerceIn(0, maxY)
-                    params.rightMargin = 0; params.bottomMargin = 0
+                    params.leftMargin = (touchpadDragOriginX + event.rawX - touchpadDragStartX)
+                        .toInt().coerceIn(0, maxX)
+                    params.topMargin = (touchpadDragOriginY + event.rawY - touchpadDragStartY)
+                        .toInt().coerceIn(0, maxY)
+                    params.rightMargin = 0
+                    params.bottomMargin = 0
                     root.updateViewLayout(bottomPanel, params)
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     val maxX = (root.width - bottomPanel.width).coerceAtLeast(1)
                     val maxY = (root.height - bottomPanel.height).coerceAtLeast(1)
-                    touchpadPositionXPercent = (bottomPanel.x / maxX * 100).toInt().coerceIn(0, 100)
-                    touchpadPositionYPercent = (bottomPanel.y / maxY * 100).toInt().coerceIn(0, 100)
+                    touchpadPositionXPercent =
+                        (bottomPanel.left.toFloat() / maxX * 100).toInt().coerceIn(0, 100)
+                    touchpadPositionYPercent =
+                        (bottomPanel.top.toFloat() / maxY * 100).toInt().coerceIn(0, 100)
                     persistTouchpadSettings()
                     true
                 }
