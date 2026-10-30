@@ -338,12 +338,12 @@ public class TaskbarController extends UIController {
         // Saku DeX Hybrid: a distinct, elevated desktop dock. Keep it translucent without
         // real-time blur so the dock remains responsive on low-memory Android devices.
         float dexDensity = context.getResources().getDisplayMetrics().density;
-        layout.setBackground(GlassBackgrounds.createGlassSurface(context, 22));
+        layout.setBackground(GlassBackgrounds.createGlassSurface(context, 22, Color.argb(153, 12, 14, 18)));
         layout.setElevation(12 * dexDensity);
         layout.setClipToPadding(false);
-        layout.setPadding(Math.round(8 * dexDensity), Math.round(4 * dexDensity),
-                Math.round(8 * dexDensity), Math.round(4 * dexDensity));
-        layout.setMinimumHeight(Math.round(52 * dexDensity));
+        layout.setPadding(Math.round(10 * dexDensity), Math.round(3 * dexDensity),
+                Math.round(10 * dexDensity), Math.round(3 * dexDensity));
+        layout.setMinimumHeight(Math.round(48 * dexDensity));
         layout.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
         if(startButton != null) {
             startButton.setScaleType(ImageView.ScaleType.FIT_CENTER);
