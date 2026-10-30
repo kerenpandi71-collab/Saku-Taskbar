@@ -416,7 +416,10 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(5), dp(5), dp(5), dp(5))
             background = roundedPanel(242, 16)
-            elevation = dp(7).toFloat()
+            // Keep the keyboard above the bottom trackpad panel in both drawing
+            // and touch-dispatch order; otherwise the trackpad steals key taps.
+            elevation = dp(18).toFloat()
+            translationZ = dp(2).toFloat()
             contentDescription = "Keyboard virtual sederhana"
         }
         val keyboardTitle = LinearLayout(this).apply {
@@ -1115,7 +1118,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             status.text = "Mulai virtual display dahulu."
             return
         }
-        mouseInputExecutor.execute {
+        keyboardInputExecutor.execute {
             val accepted = virtualDisplayController?.injectKeyEvents(
                 intArrayOf(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.ACTION_UP),
                 intArrayOf(keyCode, keyCode),
