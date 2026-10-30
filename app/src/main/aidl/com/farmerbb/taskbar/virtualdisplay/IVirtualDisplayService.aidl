@@ -19,4 +19,5 @@ interface IVirtualDisplayService {
     String getDisplayDiagnostics(int displayId) = 8;
     boolean runShellCommand(String command) = 17;
     String requestRootAccess() = 18;
+    String getRecentTasks(int displayId) = 19;
 }
