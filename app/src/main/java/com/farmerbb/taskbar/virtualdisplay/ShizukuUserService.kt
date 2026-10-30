@@ -237,14 +237,28 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
             return false
         }
         val originalActionIndex =
-            (action and MotionEvent.ACTION_POINTER_INDEX_MASK) shr MotionEvent.ACTION_POINTER_INDEX_SHIFT
-        val actionPointerId = if (masked == MotionEvent.ACTION_POINTER_DOWN || masked == MotionEvent.ACTION_POINTER_UP) {
-            pointerIds.getOrNull(originalActionIndex)
-        } else null
-        if ((masked == MotionEvent.ACTION_POINTER_DOWN || masked == MotionEvent.ACTION_POINTER_UP) && actionPointerId == null) {
+            (action and MotionEvent.ACTION_POINTER_INDEX_MASK) shr
+                MotionEvent.ACTION_POINTER_INDEX_SHIFT
+
+        val actionPointerId =
+            if (
+                masked == MotionEvent.ACTION_POINTER_DOWN ||
+                masked == MotionEvent.ACTION_POINTER_UP
+            ) {
+                pointerIds.getOrNull(originalActionIndex)
+            } else {
+                null
+            }
+
+        if (
+            (masked == MotionEvent.ACTION_POINTER_DOWN ||
+                masked == MotionEvent.ACTION_POINTER_UP) &&
+            actionPointerId == null
+        ) {
             lastError = "Multi-touch action index tidak cocok dengan pointer."
             return false
         }
+
         // Android expects pointer properties ordered by pointer ID; host pointer indices can change.
         val order = pointerIds.indices.sortedBy { pointerIds[it] }
         val sortedIds = order.map { pointerIds[it] }
