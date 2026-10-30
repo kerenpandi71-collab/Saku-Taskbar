@@ -779,7 +779,6 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
             val componentPattern = Regex("""[A-Za-z0-9_.$]+/[A-Za-z0-9_.$]+""")
             val found = linkedMapOf<Int, String>()
             val lines = activities.second.lines()
-            var inheritedDisplay: Int? = null
             var contextLines = mutableListOf<String>()
             var taskLines = mutableListOf<String>()
             var currentTaskId: Int? = null
@@ -817,8 +816,6 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                     }
                     if (contextLines.size >= 45) contextLines.removeAt(0)
                     contextLines.add(line)
-                    val ids = idsIn(line)
-                    if (ids.isNotEmpty()) inheritedDisplay = ids.first()
                 } else if (taskLines.size < 100) {
                     taskLines.add(line)
                 }
