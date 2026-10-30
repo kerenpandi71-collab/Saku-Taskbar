@@ -799,6 +799,7 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                     found[id] = "taskId=$id" + (component?.let { " • $it" } ?: "")
                 }
                 taskLines.clear()
+                currentTaskId = null
             }
 
             for (line in lines) {
@@ -809,11 +810,14 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                     taskLines.add(line)
                     continue
                 }
-                // A new root/display section changes the inherited display context.
+                // RootTask/display headers delimit the inherited display context.
+                if (line.contains("RootTask", true) || line.contains("Display #", true)) {
+                    flushTask()
+                    contextLines.clear()
+                    contextLines.add(line)
+                    continue
+                }
                 if (currentTaskId == null) {
-                    if (line.contains("RootTask", true) || line.contains("Display #", true)) {
-                        contextLines.clear()
-                    }
                     if (contextLines.size >= 45) contextLines.removeAt(0)
                     contextLines.add(line)
                 } else if (taskLines.size < 100) {
