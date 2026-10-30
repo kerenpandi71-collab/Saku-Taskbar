@@ -154,11 +154,16 @@ class ShizukuBridge(
             try {
                 val service = remote ?: throw IllegalStateException("UserService belum siap.")
                 val id = service.createVirtualDisplay(width, height, densityDpi, surface)
-                val error = service.getLastError().ifBlank { if (id >= 0) "OK" else "Pembuatan display gagal." }
+                val error = service.getLastError().ifBlank {
+                    if (id >= 0) "OK" else "Pembuatan display gagal."
+                }
                 callback(id, error)
             } catch (error: Throwable) {
                 Log.e(TAG, "createVirtualDisplay call failed", error)
-                callback(-1, "${error.cause?.message ?: error.message ?: error.javaClass.simpleName}")
+                callback(
+                    -1,
+                    "${error.cause?.message ?: error.message ?: error.javaClass.simpleName}"
+                )
             }
         }
     }
@@ -174,7 +179,8 @@ class ShizukuBridge(
 
     fun injectMouseClick(displayId: Int, x: Float, y: Float): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             val accepted = service.injectMouseClick(displayId, x, y)
             val details = service.getLastError()
             onStatus(if (accepted) details else "Klik mouse ditolak: $details")
@@ -188,7 +194,8 @@ class ShizukuBridge(
 
     fun injectTouchEvent(displayId: Int, action: Int, x: Float, y: Float): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             val accepted = service.injectTouchEvent(displayId, action, x, y)
             if (!accepted) onStatus("Sentuhan ditolak: ${service.getLastError()}")
             accepted
@@ -199,9 +206,16 @@ class ShizukuBridge(
         }
     }
 
-    fun injectTouchPoints(displayId: Int, action: Int, pointerIds: IntArray, xs: FloatArray, ys: FloatArray): Boolean {
+    fun injectTouchPoints(
+        displayId: Int,
+        action: Int,
+        pointerIds: IntArray,
+        xs: FloatArray,
+        ys: FloatArray
+    ): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             val accepted = service.injectTouchPoints(displayId, action, pointerIds, xs, ys)
             if (!accepted) onStatus("Multi-touch ditolak: ${service.getLastError()}")
             accepted
@@ -214,7 +228,8 @@ class ShizukuBridge(
 
     fun injectTouchClick(displayId: Int, x: Float, y: Float): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             val accepted = service.injectTouchClick(displayId, x, y)
             if (!accepted) onStatus("Tap layar ditolak: ${service.getLastError()}")
             accepted
@@ -227,7 +242,8 @@ class ShizukuBridge(
 
     fun injectMouseButton(displayId: Int, action: Int, x: Float, y: Float): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             val accepted = service.injectMouseButton(displayId, action, x, y)
             if (!accepted) onStatus("Input mouse ditolak: ${service.getLastError()}")
             accepted
@@ -238,9 +254,15 @@ class ShizukuBridge(
         }
     }
 
-    fun injectKeyEvents(displayId: Int, actions: IntArray, keyCodes: IntArray, metaStates: IntArray): Boolean {
+    fun injectKeyEvents(
+        displayId: Int,
+        actions: IntArray,
+        keyCodes: IntArray,
+        metaStates: IntArray
+    ): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             val accepted = service.injectKeyEvents(displayId, actions, keyCodes, metaStates)
             if (!accepted) onStatus("Input keyboard ditolak: ${service.getLastError()}")
             accepted
@@ -253,7 +275,8 @@ class ShizukuBridge(
 
     fun runShellCommand(command: String): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             val accepted = service.runShellCommand(command)
             if (!accepted) onStatus("Perintah input Shizuku gagal: ${service.getLastError()}")
             accepted
@@ -270,9 +293,16 @@ class ShizukuBridge(
         error.cause?.message ?: error.message ?: "Gagal membaca status Shizuku."
     }
 
-    fun injectMouseScroll(displayId: Int, x: Float, y: Float, horizontal: Float, vertical: Float): Boolean {
+    fun injectMouseScroll(
+        displayId: Int,
+        x: Float,
+        y: Float,
+        horizontal: Float,
+        vertical: Float
+    ): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             service.injectMouseScroll(displayId, x, y, horizontal, vertical)
         } catch (error: Throwable) {
             Log.e(TAG, "injectMouseScroll failed", error)
@@ -282,7 +312,8 @@ class ShizukuBridge(
 
     fun setVirtualDisplaySurface(surface: Surface): Boolean {
         return try {
-            val service = remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            val service =
+                remote ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
             service.setVirtualDisplaySurface(surface)
         } catch (error: Throwable) {
             Log.e(TAG, "setVirtualDisplaySurface failed", error)
@@ -314,9 +345,13 @@ class ShizukuBridge(
         remote = null
         try { Shizuku.removeBinderReceivedListener(binderReceivedListener) } catch (_: Throwable) {}
         try { Shizuku.removeBinderDeadListener(binderDeadListener) } catch (_: Throwable) {}
-        try { Shizuku.removeRequestPermissionResultListener(permissionListener) } catch (_: Throwable) {}
+        try {
+            Shizuku.removeRequestPermissionResultListener(permissionListener)
+        } catch (_: Throwable) {}
         if (wasBound) {
-            try { Shizuku.unbindUserService(userServiceArgs, serviceConnection, true) } catch (_: Throwable) {}
+            try {
+                Shizuku.unbindUserService(userServiceArgs, serviceConnection, true)
+            } catch (_: Throwable) {}
         }
         binding = false
         pendingCallbacks.clear()
