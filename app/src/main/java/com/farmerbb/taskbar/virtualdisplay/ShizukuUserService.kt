@@ -76,9 +76,8 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
 
             created.setSurface(surface)
 
-            // Route the IME to the default display while keeping the focused editor on this
-            // virtual display. This lets Gboard stay visible on the phone while typing directly
-            // into the app window that owns focus on the virtual display.
+            // Never allow Android/OEM IME surfaces to be created on this virtual display.
+            // Gboard is hosted by VirtualDisplayTouchActivity's 1x1 proxy on built-in display 0.
             virtualDisplay = created
             applyVirtualDisplayImePolicy(created.display.displayId)
             val display = created.display
@@ -107,8 +106,9 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
     }
 
     private fun applyVirtualDisplayImePolicy(displayId: Int) {
-        // FALLBACK_DISPLAY=1: editor tetap berada di virtual display, sedangkan Gboard
-        // ditampilkan pada display utama. Jangan gunakan HIDE karena itu memblokir IME.
+        // HIDE=2: hard-disable IME presentation on the virtual display. The host Activity
+        // on built-in display 0 owns the only InputConnection used to show Gboard.
+        // FALLBACK_DISPLAY is not reliable on some OEM builds and may render IME here.
         runCatching {
             enableHiddenApiAccess()
             val windowManagerGlobal = Class.forName("android.view.WindowManagerGlobal")
@@ -117,9 +117,9 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                 ?: throw IllegalStateException("WindowManagerService tidak tersedia")
             val policy = runCatching {
                 Class.forName("android.view.WindowManager")
-                    .getField("DISPLAY_IME_POLICY_FALLBACK_DISPLAY")
+                    .getField("DISPLAY_IME_POLICY_HIDE")
                     .getInt(null)
-            }.getOrDefault(DISPLAY_IME_POLICY_FALLBACK_DISPLAY)
+            }.getOrDefault(DISPLAY_IME_POLICY_HIDE)
             val iWindowManager = Class.forName("android.view.IWindowManager")
             val setPolicy = iWindowManager.getMethod(
                 "setDisplayImePolicy",
@@ -746,6 +746,6 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
         private const val TRUSTED_FLAG = 1 shl 10
         private const val INJECT_ASYNC = 0
         private const val INJECT_WAIT_FOR_RESULT = 1
-        private const val DISPLAY_IME_POLICY_FALLBACK_DISPLAY = 1
+        private const val DISPLAY_IME_POLICY_HIDE = 2
     }
 }
