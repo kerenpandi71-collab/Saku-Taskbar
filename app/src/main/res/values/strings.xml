@@ -497,4 +497,6 @@
     <string name="tb_override_freeform_unsupported_description">This version of Android does not support freeform mode on displays that do not set their default windowing mode to freeform (such as the built-in device display).\n\nIf you believe this is in error, toggle this setting on to force-enable the \'Freeform mode\" settings page.</string>
 
     <string name="tb_shizuku_successful">Successfully enabled additional settings via Shizuku</string>
+    <string name="tb_virtual_display_touch">Virtual Display Touch</string>
+    <string name="tb_virtual_display_touch_summary">Create and control a virtual display with a touchpad, cursor and keyboard using Shizuku.</string>
 </resources>
