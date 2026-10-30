@@ -287,6 +287,18 @@ class ShizukuBridge(
         }
     }
 
+    /** Ask Magisk for root through a fixed, non-user-controlled command. */
+    fun requestRootAccess(): String {
+        return try {
+            val service = remote
+                ?: throw IllegalStateException("Shizuku UserService belum terhubung.")
+            service.requestRootAccess()
+        } catch (error: Throwable) {
+            Log.e(TAG, "requestRootAccess failed", error)
+            "Permintaan root gagal: ${error.cause?.message ?: error.message}"
+        }
+    }
+
     fun getLastError(): String = try {
         remote?.getLastError() ?: "Shizuku UserService belum terhubung."
     } catch (error: Throwable) {
