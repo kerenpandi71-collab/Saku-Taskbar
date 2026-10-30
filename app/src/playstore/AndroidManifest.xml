@@ -79,6 +79,12 @@
         tools:ignore="GoogleAppIndexingWarning">
 
         <activity
+            android:name=".virtualdisplay.VirtualDisplayTouchActivity"
+            android:exported="false"
+            android:label="@string/tb_virtual_display_touch"
+            android:screenOrientation="unspecified"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity
             android:name=".activity.MainActivity"
             android:exported="true"
             android:label="${appName}"
