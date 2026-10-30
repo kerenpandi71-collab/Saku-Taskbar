@@ -335,10 +335,14 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, dp(32), 1f))
         topBar.addView(resolutionRow)
         val controlRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        touchpadSizeValue = TextView(this).apply { text = "Tinggi TP L ${touchpadLandscapeHeightPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
+        touchpadSizeValue = TextView(this).apply {
+            val portraitNow = resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            text = if (portraitNow) "Tinggi TP P ${touchpadPortraitHeightPercent}%" else "Tinggi TP L ${touchpadLandscapeHeightPercent}%"
+            textSize = 9f; setTextColor(Color.WHITE)
+        }
         controlRow.addView(touchpadSizeValue, LinearLayout.LayoutParams(dp(92), dp(25)))
         touchpadSizeSeekBar = SeekBar(this).apply {
-            max = 60; progress = touchpadLandscapeHeightPercent - 40
+            max = 60; progress = if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) touchpadPortraitHeightPercent - 15 else touchpadLandscapeHeightPercent - 40
             contentDescription = "Tinggi touchpad portrait atau landscape"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -375,10 +379,14 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         controlRow.addView(sensitivitySeekBar, LinearLayout.LayoutParams(0, dp(25), 1f))
         topBar.addView(controlRow)
         val touchpadWidthRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        touchpadWidthValue = TextView(this).apply { text = "Lebar TP L ${touchpadWidthPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
+        touchpadWidthValue = TextView(this).apply {
+            val portraitNow = resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            text = if (portraitNow) "Lebar TP P ${touchpadPortraitWidthPercent}%" else "Lebar TP L ${touchpadWidthPercent}%"
+            textSize = 9f; setTextColor(Color.WHITE)
+        }
         touchpadWidthRow.addView(touchpadWidthValue, LinearLayout.LayoutParams(dp(92), dp(25)))
         val touchpadWidthSeekBar = SeekBar(this).apply {
-            max = 40; progress = touchpadWidthPercent - 18
+            max = 40; progress = if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) touchpadPortraitWidthPercent - 60 else touchpadWidthPercent - 18
             contentDescription = "Lebar touchpad portrait atau landscape"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
