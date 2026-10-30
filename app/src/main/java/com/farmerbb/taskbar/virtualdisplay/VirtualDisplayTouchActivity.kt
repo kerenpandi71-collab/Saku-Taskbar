@@ -802,7 +802,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, dp(30), 1f))
         virtualNavRow.addView(actionButton("⌂ Home") { sendVirtualNavigationKey(android.view.KeyEvent.KEYCODE_HOME) },
             LinearLayout.LayoutParams(0, dp(30), 1f))
-        virtualNavRow.addView(actionButton("▢ Recent") { sendVirtualNavigationKey(android.view.KeyEvent.KEYCODE_APP_SWITCH) },
+        virtualNavRow.addView(actionButton("▢ Recent") { showVirtualDisplayRecentTasks() },
             LinearLayout.LayoutParams(0, dp(30), 1f))
         bottomPanel.addView(virtualNavRow)
         val stage = FrameLayout(this).apply {
@@ -980,6 +980,28 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) applyImmersiveMode()
+    }
+
+    private fun showVirtualDisplayRecentTasks() {
+        val displayId = virtualDisplayController?.displayId ?: -1
+        if (displayId < 0) {
+            status.text = "Mulai virtual display dahulu."
+            return
+        }
+        status.text = "Membaca aplikasi pada display $displayId…"
+        keyboardInputExecutor.execute {
+            val result = shizukuBridge.getRecentTasks(displayId)
+            runOnUiThread {
+                appendRuntimeLog("Recent display $displayId\\n$result")
+                AlertDialog.Builder(this)
+                    .setTitle("Recent • Display $displayId")
+                    .setMessage(result)
+                    .setPositiveButton("Perbarui") { _, _ -> showVirtualDisplayRecentTasks() }
+                    .setNegativeButton("Tutup", null)
+                    .show()
+                status.text = "Daftar Recent display $displayId diperbarui."
+            }
+        }
     }
 
     private fun sendVirtualNavigationKey(keyCode: Int) {
