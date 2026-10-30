@@ -48,12 +48,16 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
     private var touchpadHeightPercent = 36
     private var touchpadWidthPercent = 27
     private var touchpadLandscapeHeightPercent = 94
-    private var touchpadHasCustomPosition = false
-    private var touchpadPositionXPercent = 100
-    private var touchpadPositionYPercent = 50
-    private var touchpadDragGrabOffsetX = 0f
-    private var touchpadDragGrabOffsetY = 0f
-    private val touchpadDragRootLocation = IntArray(2)
+    private var touchpadPortraitHasCustomPosition = false
+    private var touchpadLandscapeHasCustomPosition = false
+    private var touchpadPortraitXPercent = 50
+    private var touchpadPortraitYPercent = 70
+    private var touchpadLandscapeXPercent = 100
+    private var touchpadLandscapeYPercent = 50
+    private var touchpadDragStartX = 0f
+    private var touchpadDragStartY = 0f
+    private var touchpadDragOriginX = 0
+    private var touchpadDragOriginY = 0
     private lateinit var touchpadWidthValue: TextView
     private lateinit var resolutionWidthInput: EditText
     private lateinit var resolutionHeightInput: EditText
@@ -153,9 +157,15 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         val touchpadPrefs = getSharedPreferences("saku_desktop_touchpad", Context.MODE_PRIVATE)
         touchpadWidthPercent = touchpadPrefs.getInt("width_percent", 27).coerceIn(18, 45)
         touchpadLandscapeHeightPercent = touchpadPrefs.getInt("height_percent", 94).coerceIn(40, 100)
-        touchpadHasCustomPosition = touchpadPrefs.getBoolean("custom_position", false)
-        touchpadPositionXPercent = touchpadPrefs.getInt("position_x_percent", 100).coerceIn(0, 100)
-        touchpadPositionYPercent = touchpadPrefs.getInt("position_y_percent", 50).coerceIn(0, 100)
+        touchpadLandscapeHasCustomPosition = touchpadPrefs.getBoolean("landscape_custom_position",
+            touchpadPrefs.getBoolean("custom_position", false))
+        touchpadLandscapeXPercent = touchpadPrefs.getInt("landscape_x_percent",
+            touchpadPrefs.getInt("position_x_percent", 100)).coerceIn(0, 100)
+        touchpadLandscapeYPercent = touchpadPrefs.getInt("landscape_y_percent",
+            touchpadPrefs.getInt("position_y_percent", 50)).coerceIn(0, 100)
+        touchpadPortraitHasCustomPosition = touchpadPrefs.getBoolean("portrait_custom_position", false)
+        touchpadPortraitXPercent = touchpadPrefs.getInt("portrait_x_percent", 50).coerceIn(0, 100)
+        touchpadPortraitYPercent = touchpadPrefs.getInt("portrait_y_percent", 70).coerceIn(0, 100)
         // Keep the IME host on the phone display; never auto-open Gboard on Activity launch.
         window.setSoftInputMode(
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING or
@@ -647,52 +657,59 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         }, LinearLayout.LayoutParams(dp(38), dp(28)))
         touchpadMoveHandle.isClickable = true
         touchpadMoveHandle.isFocusable = true
-        touchpadMoveHandle.setOnTouchListener { view, event ->
-            if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
-                return@setOnTouchListener false
-            }
+        touchpadMoveHandle.setOnTouchListener { _, event ->
             val params = bottomPanel.layoutParams as? FrameLayout.LayoutParams
                 ?: return@setOnTouchListener false
+            val landscapeNow = resources.configuration.orientation ==
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    // Convert screen pointer coordinates into root-local panel coordinates.
-                    root.getLocationOnScreen(touchpadDragRootLocation)
-                    touchpadDragGrabOffsetX =
-                        event.rawX - touchpadDragRootLocation[0] - bottomPanel.left
-                    touchpadDragGrabOffsetY =
-                        event.rawY - touchpadDragRootLocation[1] - bottomPanel.top
-                    touchpadHasCustomPosition = true
+                    touchpadDragOriginX = bottomPanel.left.coerceIn(0,
+                        (root.width - bottomPanel.width).coerceAtLeast(0))
+                    touchpadDragOriginY = bottomPanel.top.coerceIn(0,
+                        (root.height - bottomPanel.height).coerceAtLeast(0))
                     params.gravity = Gravity.TOP or Gravity.START
-                    params.leftMargin = bottomPanel.left.coerceIn(0, (root.width - bottomPanel.width).coerceAtLeast(0))
-                    params.topMargin = bottomPanel.top.coerceIn(0, (root.height - bottomPanel.height).coerceAtLeast(0))
+                    params.leftMargin = touchpadDragOriginX
+                    params.topMargin = touchpadDragOriginY
                     params.rightMargin = 0
                     params.bottomMargin = 0
                     bottomPanel.layoutParams = params
-                    view.parent?.requestDisallowInterceptTouchEvent(true)
+                    touchpadDragStartX = event.rawX
+                    touchpadDragStartY = event.rawY
+                    touchpadPortraitHasCustomPosition = !landscapeNow || touchpadPortraitHasCustomPosition
+                    touchpadLandscapeHasCustomPosition = landscapeNow || touchpadLandscapeHasCustomPosition
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    root.getLocationOnScreen(touchpadDragRootLocation)
                     val maxX = (root.width - bottomPanel.width).coerceAtLeast(0)
                     val maxY = (root.height - bottomPanel.height).coerceAtLeast(0)
-                    val left = (event.rawX - touchpadDragRootLocation[0] - touchpadDragGrabOffsetX).toInt().coerceIn(0, maxX)
-                    val top = (event.rawY - touchpadDragRootLocation[1] - touchpadDragGrabOffsetY).toInt().coerceIn(0, maxY)
+                    val x = (touchpadDragOriginX + event.rawX - touchpadDragStartX)
+                        .toInt().coerceIn(0, maxX)
+                    val y = (touchpadDragOriginY + event.rawY - touchpadDragStartY)
+                        .toInt().coerceIn(0, maxY)
                     params.gravity = Gravity.TOP or Gravity.START
-                    params.leftMargin = left
-                    params.topMargin = top
+                    params.leftMargin = x
+                    params.topMargin = y
                     params.rightMargin = 0
                     params.bottomMargin = 0
-                    bottomPanel.layoutParams = params
+                    root.updateViewLayout(bottomPanel, params)
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     val maxX = (root.width - bottomPanel.width).coerceAtLeast(1)
                     val maxY = (root.height - bottomPanel.height).coerceAtLeast(1)
-                    touchpadPositionXPercent = (bottomPanel.left.toFloat() / maxX * 100).toInt().coerceIn(0, 100)
-                    touchpadPositionYPercent = (bottomPanel.top.toFloat() / maxY * 100).toInt().coerceIn(0, 100)
-                    touchpadHasCustomPosition = true
+                    val xPercent = (bottomPanel.left.toFloat() / maxX * 100).toInt().coerceIn(0, 100)
+                    val yPercent = (bottomPanel.top.toFloat() / maxY * 100).toInt().coerceIn(0, 100)
+                    if (landscapeNow) {
+                        touchpadLandscapeHasCustomPosition = true
+                        touchpadLandscapeXPercent = xPercent
+                        touchpadLandscapeYPercent = yPercent
+                    } else {
+                        touchpadPortraitHasCustomPosition = true
+                        touchpadPortraitXPercent = xPercent
+                        touchpadPortraitYPercent = yPercent
+                    }
                     persistTouchpadSettings()
-                    view.parent?.requestDisallowInterceptTouchEvent(false)
                     true
                 }
                 else -> true
@@ -1676,12 +1693,12 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             panelParams?.let {
                 it.width = touchWidth
                 it.height = (rootHeight * touchpadLandscapeHeightPercent / 100).coerceIn(dp(130), rootHeight)
-                if (touchpadHasCustomPosition) {
+                if (touchpadLandscapeHasCustomPosition) {
                     val maxX = (rootWidth - it.width).coerceAtLeast(0)
                     val maxY = (rootHeight - it.height).coerceAtLeast(0)
                     it.gravity = Gravity.TOP or Gravity.START
-                    it.leftMargin = (maxX * touchpadPositionXPercent / 100f).toInt()
-                    it.topMargin = (maxY * touchpadPositionYPercent / 100f).toInt()
+                    it.leftMargin = (maxX * touchpadLandscapeXPercent / 100f).toInt()
+                    it.topMargin = (maxY * touchpadLandscapeYPercent / 100f).toInt()
                     it.rightMargin = 0; it.bottomMargin = 0
                 } else {
                     it.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
@@ -1719,10 +1736,19 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                 val panelHeight = (rootHeight * 30 / 100).coerceAtLeast(dp(120))
                 it.width = rootWidth - dp(14)
                 it.height = panelHeight
-                it.gravity = Gravity.TOP
-                it.topMargin = (rootHeight * 70 / 100).coerceAtMost(rootHeight - panelHeight)
-                it.bottomMargin = 0
-                it.leftMargin = dp(7); it.rightMargin = dp(7)
+                if (touchpadPortraitHasCustomPosition) {
+                    val maxX = (rootWidth - it.width).coerceAtLeast(0)
+                    val maxY = (rootHeight - it.height).coerceAtLeast(0)
+                    it.gravity = Gravity.TOP or Gravity.START
+                    it.leftMargin = (maxX * touchpadPortraitXPercent / 100f).toInt()
+                    it.topMargin = (maxY * touchpadPortraitYPercent / 100f).toInt()
+                    it.rightMargin = 0; it.bottomMargin = 0
+                } else {
+                    it.gravity = Gravity.TOP
+                    it.topMargin = (rootHeight * 70 / 100).coerceAtMost(rootHeight - panelHeight)
+                    it.bottomMargin = 0
+                    it.leftMargin = dp(7); it.rightMargin = dp(7)
+                }
                 bottomPanel.layoutParams = it
             }
             keyboardParams?.let {
@@ -1759,9 +1785,12 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         getSharedPreferences("saku_desktop_touchpad", Context.MODE_PRIVATE).edit()
             .putInt("width_percent", touchpadWidthPercent)
             .putInt("height_percent", touchpadLandscapeHeightPercent)
-            .putBoolean("custom_position", touchpadHasCustomPosition)
-            .putInt("position_x_percent", touchpadPositionXPercent)
-            .putInt("position_y_percent", touchpadPositionYPercent)
+            .putBoolean("landscape_custom_position", touchpadLandscapeHasCustomPosition)
+            .putInt("landscape_x_percent", touchpadLandscapeXPercent)
+            .putInt("landscape_y_percent", touchpadLandscapeYPercent)
+            .putBoolean("portrait_custom_position", touchpadPortraitHasCustomPosition)
+            .putInt("portrait_x_percent", touchpadPortraitXPercent)
+            .putInt("portrait_y_percent", touchpadPortraitYPercent)
             .apply()
     }
 
