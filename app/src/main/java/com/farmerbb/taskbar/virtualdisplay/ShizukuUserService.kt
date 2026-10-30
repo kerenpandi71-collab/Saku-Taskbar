@@ -752,40 +752,108 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
         }
     }
 
-    /** Returns a bounded diagnostic snapshot of tasks reported on the requested display. */
+    /** Reads tasks using both ActivityManager views and associates them with their display. */
     override fun getRecentTasks(displayId: Int): String {
         if (displayId !in 0..10000) return "Display ID tidak valid."
         return try {
-            val result = runShizukuShell("dumpsys activity activities", timeoutMs = 7000L, maxCharacters = 24000)
-            if (result.first != 0) {
-                lastError = "Tidak dapat membaca daftar task: ${result.second.take(500)}"
+            // The activities dump contains display/root-task context; recents provides a second
+            // task-ID source on Android builds whose activities formatting differs.
+            val activities = runShizukuShell(
+                "dumpsys activity activities",
+                timeoutMs = 10000L,
+                maxCharacters = 120000
+            )
+            if (activities.first != 0) {
+                lastError = "Gagal membaca ActivityManager (exit=${activities.first}): ${activities.second.take(700)}"
                 return lastError
             }
-            val lines = result.second.lines()
-            val taskHeader = Regex("""(?i).*Task\{[^}]*#([0-9]+)[^}]*\}.*""")
-            val displayMarker = Regex("""(?i)(?:mDisplayId|displayId|display id)\s*[=:]\s*([0-9]+)""")
-            val blocks = mutableListOf<String>()
-            var block = mutableListOf<String>()
-            fun flush() {
-                if (block.isEmpty()) return
-                val joined = block.joinToString("\n")
-                val displayIds = displayMarker.findAll(joined).mapNotNull { it.groupValues.getOrNull(1)?.toIntOrNull() }.toSet()
-                if (displayId in displayIds) {
-                    val taskId = taskHeader.find(joined)?.groupValues?.getOrNull(1)
-                    val component = Regex("""[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+""").find(joined)?.value
-                    if (taskId != null) blocks += "taskId=$taskId" + (component?.let { " • $it" } ?: "")
+            val recents = runShizukuShell(
+                "dumpsys activity recents",
+                timeoutMs = 8000L,
+                maxCharacters = 80000
+            )
+            val taskHeader = Regex("""(?i)Task\\{[^}]*?#([0-9]+)[^}]*?}""")
+            val displayMarker = Regex(
+                """(?i)(?:mDisplayId|displayId|display\\s*id)\\s*[=:]\\s*([0-9]+)|display\\s*#\\s*([0-9]+)"""
+            )
+            val componentPattern = Regex("""[A-Za-z0-9_.$]+/[A-Za-z0-9_.$]+""")
+            val found = linkedMapOf<Int, String>()
+            val lines = activities.second.lines()
+            var inheritedDisplay: Int? = null
+            var contextLines = mutableListOf<String>()
+            var taskLines = mutableListOf<String>()
+            var currentTaskId: Int? = null
+
+            fun idsIn(source: String): Set<Int> = displayMarker.findAll(source).mapNotNull {
+                (it.groupValues.getOrNull(1)?.takeIf(String::isNotBlank)
+                    ?: it.groupValues.getOrNull(2))?.toIntOrNull()
+            }.toSet()
+
+            fun flushTask() {
+                val id = currentTaskId ?: return
+                val joined = (contextLines + taskLines).joinToString("\\n")
+                val ownIds = idsIn(taskLines.joinToString("\\n"))
+                val contextIds = idsIn(contextLines.joinToString("\\n"))
+                if (displayId in ownIds || (ownIds.isEmpty() && displayId in contextIds)) {
+                    val component = componentPattern.find(taskLines.joinToString("\\n"))?.value
+                        ?: componentPattern.find(joined)?.value
+                    found[id] = "taskId=$id" + (component?.let { " • $it" } ?: "")
                 }
-                block = mutableListOf()
+                taskLines.clear()
             }
+
             for (line in lines) {
-                if (taskHeader.containsMatchIn(line)) flush()
-                if (block.size < 80) block += line
+                val header = taskHeader.find(line)
+                if (header != null) {
+                    flushTask()
+                    currentTaskId = header.groupValues[1].toIntOrNull()
+                    taskLines.add(line)
+                    continue
+                }
+                // A new root/display section changes the inherited display context.
+                if (currentTaskId == null) {
+                    if (line.contains("RootTask", true) || line.contains("Display #", true)) {
+                        contextLines.clear()
+                    }
+                    if (contextLines.size >= 45) contextLines.removeAt(0)
+                    contextLines.add(line)
+                    val ids = idsIn(line)
+                    if (ids.isNotEmpty()) inheritedDisplay = ids.first()
+                } else if (taskLines.size < 100) {
+                    taskLines.add(line)
+                }
             }
-            flush()
-            lastError = "Recent display $displayId • ${blocks.size} task terdeteksi."
-            blocks.distinct().take(20).joinToString("\n").ifBlank { "Belum ada task yang terdeteksi pada display $displayId." }
+            flushTask()
+
+            // Fallback: task IDs from recents are included only when the activities dump
+            // explicitly confirms the requested display, preventing main-display leakage.
+            if (found.isEmpty() && recents.first == 0) {
+                val recentIds = taskHeader.findAll(recents.second).mapNotNull {
+                    it.groupValues[1].toIntOrNull()
+                }.toSet()
+                if (recentIds.isNotEmpty()) {
+                    lastError = "Task ditemukan di Recent Android (${recentIds.size}), tetapi format display pada dumpsys activities belum dapat dipastikan untuk display $displayId. Periksa Diagnostics."
+                    return lastError
+                }
+            }
+
+            if (found.isNotEmpty()) {
+                lastError = "Recent display $displayId • ${found.size} task terbaca."
+                found.values.take(30).joinToString("\\n")
+            } else {
+                val totalActivityTasks = taskHeader.findAll(activities.second).count()
+                lastError = if (totalActivityTasks > 0) {
+                    "Ada $totalActivityTasks task aktif, tetapi Android tidak memberi penanda display $displayId yang bisa diverifikasi. Bukan berarti daftar task kosong."
+                } else if (activities.second.length >= 119000) {
+                    "Output ActivityManager terpotong sebelum seluruh task terbaca. Coba lagi setelah mengurangi aplikasi aktif."
+                } else {
+                    "ActivityManager tidak melaporkan task aktif pada dump ini untuk display $displayId."
+                }
+                lastError
+            }
         } catch (error: Throwable) {
-            lastError = "Gagal membaca Recent: ${error.message ?: error.javaClass.simpleName}"
+            lastError = "Gagal membaca Recent: ${error.javaClass.simpleName}: ${error.message ?: "tanpa detail"}"
+            Log.w(TAG, lastError, error)
             lastError
         }
     }
