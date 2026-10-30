@@ -260,6 +260,21 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
 
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         actions.addView(actionButton("Hubungkan") { shizukuBridge.connect() }, LinearLayout.LayoutParams(0, dp(34), 1.2f))
+        actions.addView(actionButton("Root") {
+            shizukuBridge.connect { connected ->
+                if (!connected) {
+                    runOnUiThread { status.text = "Hubungkan Shizuku sebelum meminta root." }
+                } else {
+                    keyboardInputExecutor.execute {
+                        val result = shizukuBridge.requestRootAccess()
+                        runOnUiThread {
+                            status.text = result
+                            appendRuntimeLog(result)
+                        }
+                    }
+                }
+            }
+        }, LinearLayout.LayoutParams(0, dp(34), 0.65f))
         actions.addView(actionButton("Mulai") { startOwnedVirtualDisplay() }, LinearLayout.LayoutParams(0, dp(34), 0.75f))
         actions.addView(actionButton("Cek") {
             val id = virtualDisplayController?.displayId ?: -1
