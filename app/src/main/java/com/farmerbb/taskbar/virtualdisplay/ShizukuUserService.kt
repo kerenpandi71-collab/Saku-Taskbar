@@ -90,7 +90,11 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                 Display.STATE_ON_SUSPEND -> "ON_SUSPEND"
                 else -> "UNKNOWN(${display.state})"
             }
-            lastError = "Virtual display created • id=${display.displayId} • ${width.coerceIn(320, 2560)}×${height.coerceIn(320, 2560)} • state=$stateName • surfaceValid=${surface.isValid}"
+            lastError = buildString {
+                append("Virtual display created • id=${display.displayId}")
+                append(" • ${width.coerceIn(320, 2560)}×${height.coerceIn(320, 2560)}")
+                append(" • state=$stateName • surfaceValid=${surface.isValid}")
+            }
             Log.i(TAG, "$lastError flags=0x${flags.toString(16)}")
             display.displayId
         } catch (error: Throwable) {
@@ -108,7 +112,8 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
         runCatching {
             enableHiddenApiAccess()
             val windowManagerGlobal = Class.forName("android.view.WindowManagerGlobal")
-            val windowManager = windowManagerGlobal.getMethod("getWindowManagerService").invoke(null)
+            val windowManager =
+                windowManagerGlobal.getMethod("getWindowManagerService").invoke(null)
                 ?: throw IllegalStateException("WindowManagerService tidak tersedia")
             val policy = runCatching {
                 Class.forName("android.view.WindowManager")
@@ -129,11 +134,21 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                     .invoke(windowManager, displayId) as? Int
             }.getOrNull()
             if (readBack != null && readBack != policy) {
-                throw IllegalStateException("Policy IME tidak cocok: diminta=$policy terbaca=$readBack")
+                throw IllegalStateException(
+                    "Policy IME tidak cocok: diminta=$policy terbaca=$readBack"
+                )
             }
-            Log.i(TAG, "IME fallback ke display utama • display=$displayId • policy=$policy • readBack=${readBack ?: "unsupported"}.")
+            Log.i(
+                TAG,
+                "IME fallback ke display utama • display=$displayId • " +
+                    "policy=$policy • readBack=${readBack ?: "unsupported"}."
+            )
         }.onFailure { error ->
-            Log.w(TAG, "Gagal mengatur IME fallback pada virtual display $displayId: ${error.message}", error)
+            Log.w(
+                TAG,
+                "Gagal mengatur IME fallback pada virtual display $displayId: ${error.message}",
+                error
+            )
         }
     }
 
@@ -187,21 +202,42 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
             else -> touchDownTime.takeIf { it > 0L } ?: now
         }
         val accepted = injectTouchMotionEvent(displayId, action, x, y, downTime)
-        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) touchDownTime = 0L
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            touchDownTime = 0L
+        }
         return accepted
     }
 
-    override fun injectTouchPoints(displayId: Int, action: Int, pointerIds: IntArray, xs: FloatArray, ys: FloatArray): Boolean {
-        if (pointerIds.isEmpty() || pointerIds.size > 5 || pointerIds.size != xs.size || pointerIds.size != ys.size) {
+    override fun injectTouchPoints(
+        displayId: Int,
+        action: Int,
+        pointerIds: IntArray,
+        xs: FloatArray,
+        ys: FloatArray
+    ): Boolean {
+        if (
+            pointerIds.isEmpty() || pointerIds.size > 5 ||
+            pointerIds.size != xs.size || pointerIds.size != ys.size
+        ) {
             lastError = "Multi-touch perlu 1-5 pointer dengan array sama panjang."
             return false
         }
         val masked = action and MotionEvent.ACTION_MASK
-        if (masked !in setOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_POINTER_UP)) {
+        if (
+            masked !in setOf(
+                MotionEvent.ACTION_DOWN,
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_MOVE,
+                MotionEvent.ACTION_CANCEL,
+                MotionEvent.ACTION_POINTER_DOWN,
+                MotionEvent.ACTION_POINTER_UP
+            )
+        ) {
             lastError = "Aksi multi-touch tidak valid: $action"
             return false
         }
-        val originalActionIndex = (action and MotionEvent.ACTION_POINTER_INDEX_MASK) shr MotionEvent.ACTION_POINTER_INDEX_SHIFT
+        val originalActionIndex =
+            (action and MotionEvent.ACTION_POINTER_INDEX_MASK) shr MotionEvent.ACTION_POINTER_INDEX_SHIFT
         val actionPointerId = if (masked == MotionEvent.ACTION_POINTER_DOWN || masked == MotionEvent.ACTION_POINTER_UP) {
             pointerIds.getOrNull(originalActionIndex)
         } else null
@@ -220,9 +256,15 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
             masked or (sortedIds.indexOf(actionPointerId) shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
         } else masked
         val now = SystemClock.uptimeMillis()
-        val downTime = if (masked == MotionEvent.ACTION_DOWN) now.also { touchDownTime = it } else touchDownTime.takeIf { it > 0L } ?: now
+        val downTime = if (masked == MotionEvent.ACTION_DOWN) {
+            now.also { touchDownTime = it }
+        } else {
+            touchDownTime.takeIf { it > 0L } ?: now
+        }
         val points = ArrayList<Pair<Int, Int>>(pointerIds.size)
-        for (index in order) points.add(parseDisplayPoint(displayId, xs[index], ys[index]) ?: return false)
+        for (index in order) {
+            points.add(parseDisplayPoint(displayId, xs[index], ys[index]) ?: return false)
+        }
         var event: MotionEvent? = null
         val identity = Binder.clearCallingIdentity()
         try {
