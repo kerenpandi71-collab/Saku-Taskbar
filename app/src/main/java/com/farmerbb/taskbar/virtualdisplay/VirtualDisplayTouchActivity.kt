@@ -573,6 +573,12 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         val landscapeNow = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                        if (landscapeNow) {
+                            val maxX = (root.width - keyboardPanel.width).coerceAtLeast(1)
+                            val maxY = (root.height - keyboardPanel.height).coerceAtLeast(1)
+                            keyboardLandscapeXPercent = (keyboardPositionX.toFloat() / maxX * 100).toInt().coerceIn(0, 100)
+                            keyboardLandscapeYPercent = (keyboardPositionY.toFloat() / maxY * 100).toInt().coerceIn(0, 100)
+                        }
                         getSharedPreferences("saku_desktop_keyboard", Context.MODE_PRIVATE).edit()
                             .putBoolean("custom_position", if (landscapeNow) keyboardHasCustomPosition else true)
                             .putInt("position_x", keyboardPositionX)
