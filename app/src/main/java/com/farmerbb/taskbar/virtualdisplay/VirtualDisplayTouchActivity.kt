@@ -48,6 +48,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
     private var touchpadHeightPercent = 36
     private var touchpadWidthPercent = 27
     private var touchpadLandscapeHeightPercent = 94
+    private var touchpadPortraitHeightPercent = 30
+    private var touchpadPortraitWidthPercent = 100
     private var touchpadPortraitHasCustomPosition = false
     private var touchpadLandscapeHasCustomPosition = false
     private var touchpadPortraitXPercent = 50
@@ -158,6 +160,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         val touchpadPrefs = getSharedPreferences("saku_desktop_touchpad", Context.MODE_PRIVATE)
         touchpadWidthPercent = touchpadPrefs.getInt("width_percent", 27).coerceIn(18, 45)
         touchpadLandscapeHeightPercent = touchpadPrefs.getInt("height_percent", 94).coerceIn(40, 100)
+        touchpadPortraitHeightPercent = touchpadPrefs.getInt("portrait_height_percent", 30).coerceIn(15, 65)
+        touchpadPortraitWidthPercent = touchpadPrefs.getInt("portrait_width_percent", 100).coerceIn(60, 100)
         // Migrate once from old shared position keys. They could retain a stale
         // right-side position and override the new left-side landscape default.
         val landscapePositionV2 = touchpadPrefs.getBoolean("landscape_position_v2", false)
@@ -331,16 +335,21 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             LinearLayout.LayoutParams(0, dp(32), 1f))
         topBar.addView(resolutionRow)
         val controlRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        touchpadSizeValue = TextView(this).apply { text = "Tinggi TP ${touchpadLandscapeHeightPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
-        controlRow.addView(touchpadSizeValue, LinearLayout.LayoutParams(dp(76), dp(25)))
+        touchpadSizeValue = TextView(this).apply { text = "Tinggi TP L ${touchpadLandscapeHeightPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
+        controlRow.addView(touchpadSizeValue, LinearLayout.LayoutParams(dp(92), dp(25)))
         touchpadSizeSeekBar = SeekBar(this).apply {
             max = 60; progress = touchpadLandscapeHeightPercent - 40
-            contentDescription = "Tinggi touchpad landscape"
+            contentDescription = "Tinggi touchpad portrait atau landscape"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    touchpadHeightPercent = 20 + progress
-                    touchpadLandscapeHeightPercent = 40 + progress
-                    touchpadSizeValue.text = "Tinggi TP ${touchpadLandscapeHeightPercent}%"
+                    val portraitNow = resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                    if (portraitNow) {
+                        touchpadPortraitHeightPercent = 15 + progress
+                        touchpadSizeValue.text = "Tinggi TP P ${touchpadPortraitHeightPercent}%"
+                    } else {
+                        touchpadLandscapeHeightPercent = 40 + progress
+                        touchpadSizeValue.text = "Tinggi TP L ${touchpadLandscapeHeightPercent}%"
+                    }
                     persistTouchpadSettings()
                     updateDesktopLayout(root.width, root.height)
                 }
@@ -366,15 +375,21 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         controlRow.addView(sensitivitySeekBar, LinearLayout.LayoutParams(0, dp(25), 1f))
         topBar.addView(controlRow)
         val touchpadWidthRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        touchpadWidthValue = TextView(this).apply { text = "Lebar TP ${touchpadWidthPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
-        touchpadWidthRow.addView(touchpadWidthValue, LinearLayout.LayoutParams(dp(84), dp(25)))
+        touchpadWidthValue = TextView(this).apply { text = "Lebar TP L ${touchpadWidthPercent}%"; textSize = 9f; setTextColor(Color.WHITE) }
+        touchpadWidthRow.addView(touchpadWidthValue, LinearLayout.LayoutParams(dp(92), dp(25)))
         val touchpadWidthSeekBar = SeekBar(this).apply {
-            max = 27; progress = touchpadWidthPercent - 18
-            contentDescription = "Lebar touchpad landscape"
+            max = 40; progress = touchpadWidthPercent - 18
+            contentDescription = "Lebar touchpad portrait atau landscape"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    touchpadWidthPercent = 18 + progress
-                    touchpadWidthValue.text = "Lebar TP ${touchpadWidthPercent}%"
+                    val portraitNow = resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                    if (portraitNow) {
+                        touchpadPortraitWidthPercent = 60 + progress
+                        touchpadWidthValue.text = "Lebar TP P ${touchpadPortraitWidthPercent}%"
+                    } else {
+                        touchpadWidthPercent = (18 + progress).coerceAtMost(45)
+                        touchpadWidthValue.text = "Lebar TP L ${touchpadWidthPercent}%"
+                    }
                     persistTouchpadSettings()
                     updateDesktopLayout(root.width, root.height)
                 }
@@ -1751,8 +1766,10 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                 preview?.layoutParams = it
             }
             panelParams?.let {
-                val panelHeight = (rootHeight * 30 / 100).coerceAtLeast(dp(120))
-                it.width = (rootWidth * 45 / 100).coerceIn(dp(150).coerceAtMost(rootWidth), rootWidth)
+                val panelHeight = (rootHeight * touchpadPortraitHeightPercent / 100)
+                    .coerceIn(dp(120), (rootHeight * 65 / 100).coerceAtLeast(dp(120)))
+                it.width = (rootWidth * touchpadPortraitWidthPercent / 100)
+                    .coerceIn(dp(150).coerceAtMost(rootWidth), rootWidth)
                 it.height = panelHeight
                 if (touchpadPortraitHasCustomPosition) {
                     val maxX = (rootWidth - it.width).coerceAtLeast(0)
@@ -1803,6 +1820,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         getSharedPreferences("saku_desktop_touchpad", Context.MODE_PRIVATE).edit()
             .putInt("width_percent", touchpadWidthPercent)
             .putInt("height_percent", touchpadLandscapeHeightPercent)
+            .putInt("portrait_height_percent", touchpadPortraitHeightPercent)
+            .putInt("portrait_width_percent", touchpadPortraitWidthPercent)
             .putBoolean("landscape_position_v2", true)
             .putBoolean("landscape_custom_position", touchpadLandscapeHasCustomPosition)
             .putInt("landscape_x_percent", touchpadLandscapeXPercent)
