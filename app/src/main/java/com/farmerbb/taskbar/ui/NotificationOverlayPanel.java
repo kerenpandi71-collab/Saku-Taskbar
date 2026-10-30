@@ -407,7 +407,7 @@ public final class NotificationOverlayPanel {
     }
 
     private void buildQuickSettingsContent() {
-        TextView volumeLabel = makeText("Volume", 13, Color.WHITE, true);
+        TextView volumeLabel = makeText("Volume media", 13, Color.WHITE, true);
         contentLayout.addView(volumeLabel);
         SeekBar volume = new SeekBar(context);
         AudioManager audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
@@ -427,9 +427,9 @@ public final class NotificationOverlayPanel {
             });
         }
         contentLayout.addView(volume, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(36)));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(38)));
 
-        TextView brightnessLabel = makeText("Brightness", 13, Color.WHITE, true);
+        TextView brightnessLabel = makeText("Kecerahan layar", 13, Color.WHITE, true);
         LinearLayout.LayoutParams brightLabelParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         brightLabelParams.topMargin = dp(8);
@@ -454,65 +454,91 @@ public final class NotificationOverlayPanel {
                     Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
                     intent.setData(android.net.Uri.parse("package:" + context.getPackageName()));
                     launchOnDisplay(intent);
-                    Toast.makeText(context, "Allow Modify system settings, then adjust brightness again.",
+                    Toast.makeText(context, "Izinkan Modify system settings, lalu atur kecerahan lagi.",
                             Toast.LENGTH_LONG).show();
                 }
             }
         });
         contentLayout.addView(brightness, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(36)));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(38)));
 
-        TextView toggleHint = makeText("Connectivity", 13, Color.WHITE, true);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+        TextView connectivity = makeText("Koneksi", 13, Color.WHITE, true);
+        LinearLayout.LayoutParams connectivityParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        hintParams.topMargin = dp(8);
-        contentLayout.addView(toggleHint, hintParams);
-
-        LinearLayout tiles = new LinearLayout(context);
-        tiles.setOrientation(LinearLayout.VERTICAL);
+        connectivityParams.topMargin = dp(10);
+        connectivityParams.bottomMargin = dp(7);
+        contentLayout.addView(connectivity, connectivityParams);
 
         LinearLayout firstRow = new LinearLayout(context);
         firstRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView wifi = makeButton(isWifiEnabled() ? "◉  Wi-Fi\nTerhubung" : "◉  Wi-Fi\nMati", isWifiEnabled());
+        boolean wifiEnabled = isWifiEnabled();
+        TextView wifi = makeQuickSettingTile("◉", "Wi-Fi", wifiEnabled ? "Aktif" : "Nonaktif", wifiEnabled);
         wifi.setOnClickListener(v -> executeSystemCommand(
                 "svc wifi " + (isWifiEnabled() ? "disable" : "enable"), "Wi-Fi"));
-        TextView bluetooth = makeButton(isBluetoothEnabled() ? "ᛒ  Bluetooth\nAktif" : "ᛒ  Bluetooth\nMati",
-                isBluetoothEnabled());
+        boolean bluetoothEnabled = isBluetoothEnabled();
+        TextView bluetooth = makeQuickSettingTile("ᛒ", "Bluetooth",
+                bluetoothEnabled ? "Aktif" : "Nonaktif", bluetoothEnabled);
         bluetooth.setOnClickListener(v -> executeSystemCommand(
                 "svc bluetooth " + (isBluetoothEnabled() ? "disable" : "enable"), "Bluetooth"));
-        LinearLayout.LayoutParams wifiParams = new LinearLayout.LayoutParams(0, dp(62), 1f);
-        wifiParams.rightMargin = dp(6);
-        firstRow.addView(wifi, wifiParams);
-        firstRow.addView(bluetooth, new LinearLayout.LayoutParams(0, dp(62), 1f));
-        tiles.addView(firstRow);
+        LinearLayout.LayoutParams tileLeft = new LinearLayout.LayoutParams(0, dp(76), 1f);
+        tileLeft.rightMargin = dp(7);
+        firstRow.addView(wifi, tileLeft);
+        firstRow.addView(bluetooth, new LinearLayout.LayoutParams(0, dp(76), 1f));
+        contentLayout.addView(firstRow);
 
         LinearLayout secondRow = new LinearLayout(context);
         secondRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView airplane = makeButton("✈  Mode pesawat\nPengaturan", false);
-        airplane.setOnClickListener(v -> launchOnDisplay(new Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)));
-        TextView display = makeButton("☾  Tampilan\nTema & layar", false);
-        display.setOnClickListener(v -> launchOnDisplay(new Intent(Settings.ACTION_DISPLAY_SETTINGS)));
-        LinearLayout.LayoutParams airplaneParams = new LinearLayout.LayoutParams(0, dp(58), 1f);
-        airplaneParams.rightMargin = dp(6);
-        airplaneParams.topMargin = dp(6);
+        boolean mobileEnabled = Settings.Global.getInt(context.getContentResolver(), "mobile_data", 0) == 1;
+        TextView mobile = makeQuickSettingTile("▥", "Data seluler",
+                mobileEnabled ? "Aktif" : "Nonaktif", mobileEnabled);
+        mobile.setOnClickListener(v -> executeSystemCommand(
+                "svc data " + (Settings.Global.getInt(context.getContentResolver(), "mobile_data", 0) == 1
+                        ? "disable" : "enable"), "Data seluler"));
+        boolean airplaneEnabled = Settings.Global.getInt(context.getContentResolver(),
+                Settings.Global.AIRPLANE_MODE_ON, 0) == 1;
+        TextView airplane = makeQuickSettingTile("✈", "Mode pesawat",
+                airplaneEnabled ? "Aktif" : "Nonaktif", airplaneEnabled);
+        airplane.setOnClickListener(v -> {
+            boolean enable = Settings.Global.getInt(context.getContentResolver(),
+                    Settings.Global.AIRPLANE_MODE_ON, 0) != 1;
+            executeSystemCommand("settings put global airplane_mode_on " + (enable ? "1" : "0")
+                    + "; am broadcast -a android.intent.action.AIRPLANE_MODE --ez state " + enable,
+                    "Mode pesawat");
+        });
+        LinearLayout.LayoutParams mobileParams = new LinearLayout.LayoutParams(0, dp(76), 1f);
+        mobileParams.rightMargin = dp(7);
+        mobileParams.topMargin = dp(7);
+        secondRow.addView(mobile, mobileParams);
+        LinearLayout.LayoutParams airplaneParams = new LinearLayout.LayoutParams(0, dp(76), 1f);
+        airplaneParams.topMargin = dp(7);
         secondRow.addView(airplane, airplaneParams);
-        LinearLayout.LayoutParams displayParams = new LinearLayout.LayoutParams(0, dp(58), 1f);
-        displayParams.topMargin = dp(6);
-        secondRow.addView(display, displayParams);
-        tiles.addView(secondRow);
+        contentLayout.addView(secondRow);
 
-        LinearLayout.LayoutParams tileParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        tileParams.topMargin = dp(6);
-        contentLayout.addView(tiles, tileParams);
+        TextView settings = makeButton("Pengaturan layar lainnya  ›", false);
+        settings.setGravity(Gravity.CENTER_VERTICAL);
+        settings.setPadding(dp(12), 0, dp(12), 0);
+        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(42));
+        settingsParams.topMargin = dp(9);
+        contentLayout.addView(settings, settingsParams);
+        settings.setOnClickListener(v -> launchOnDisplay(new Intent(Settings.ACTION_DISPLAY_SETTINGS)));
 
-        TextView note = makeText("Kontrol Wi-Fi dan Bluetooth memerlukan Shizuku atau akses root. "
-                + "Mode pesawat dan tampilan membuka pengaturan Android.", 11,
-                Color.LTGRAY, false);
+        TextView note = makeText("Kontrol koneksi memerlukan akses Shizuku atau root. "
+                + "Kecerahan memerlukan izin Modify system settings.", 11, Color.LTGRAY, false);
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        noteParams.topMargin = dp(8);
+        noteParams.topMargin = dp(7);
         contentLayout.addView(note, noteParams);
+    }
+
+    private TextView makeQuickSettingTile(String icon, String title, String state, boolean selected) {
+        TextView tile = makeText(icon + "   " + title + "\\n" + state, 12, Color.WHITE, true);
+        tile.setGravity(Gravity.CENTER_VERTICAL);
+        tile.setPadding(dp(13), dp(7), dp(8), dp(7));
+        tile.setBackground(GlassBackgrounds.createGlassSurface(context, 18,
+                selected ? Color.rgb(28, 91, 178) : Color.rgb(42, 46, 54)));
+        tile.setClickable(true);
+        return tile;
     }
 
     private void buildPowerMenuContent() {
