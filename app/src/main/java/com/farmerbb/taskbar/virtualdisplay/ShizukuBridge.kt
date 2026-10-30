@@ -63,7 +63,8 @@ class ShizukuBridge(
         }
     }
 
-    private val permissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+    private val permissionListener =
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode != REQUEST_PERMISSION_CODE) return@OnRequestPermissionResultListener
         permissionRequestPending = false
         if (grantResult == PackageManager.PERMISSION_GRANTED) {
