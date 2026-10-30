@@ -18,4 +18,5 @@ interface IVirtualDisplayService {
     boolean setVirtualDisplaySurface(in Surface surface) = 11;
     String getDisplayDiagnostics(int displayId) = 8;
     boolean runShellCommand(String command) = 17;
+    String requestRootAccess() = 18;
 }
