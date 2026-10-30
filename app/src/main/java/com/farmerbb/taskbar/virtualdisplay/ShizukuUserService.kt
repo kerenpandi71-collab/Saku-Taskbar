@@ -266,9 +266,15 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
             lastError = "Multi-touch berisi pointer ID ganda."
             return false
         }
-        val sortedAction = if (actionPointerId != null) {
-            masked or (sortedIds.indexOf(actionPointerId) shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
-        } else masked
+        val sortedAction =
+            if (actionPointerId != null) {
+                val sortedActionIndex = sortedIds.indexOf(actionPointerId)
+                masked or (
+                    sortedActionIndex shl MotionEvent.ACTION_POINTER_INDEX_SHIFT
+                )
+            } else {
+                masked
+            }
         val now = SystemClock.uptimeMillis()
         val downTime = if (masked == MotionEvent.ACTION_DOWN) {
             now.also { touchDownTime = it }
