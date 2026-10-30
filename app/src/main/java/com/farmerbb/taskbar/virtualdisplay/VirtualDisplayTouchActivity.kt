@@ -906,8 +906,12 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             status.text = "Mulai virtual display dahulu."
             return
         }
-        keyboardPanelVisible = false
-        if (::keyboardPanel.isInitialized) keyboardPanel.visibility = View.GONE
+        // Gboard and the Cyberdeck keyboard are independent input methods:
+        // keep the custom keyboard visible so its keys remain usable while Gboard
+        // is shown on the physical display.
+        if (::keyboardPanel.isInitialized && keyboardPanelVisible) {
+            keyboardPanel.visibility = View.VISIBLE
+        }
         val root = preview?.parent as? View
         if (root != null) updateDesktopLayout(root.width, root.height)
 
@@ -1507,67 +1511,95 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
 
     private fun updateDesktopLayout(rootWidth: Int, rootHeight: Int) {
         if (rootWidth <= 0 || rootHeight <= 0 || !::bottomPanel.isInitialized) return
-        // Pertahankan rasio resolusi virtual; jangan meregangkan SurfaceView.
-        val maxPreviewWidth = (rootWidth * previewSizePercent / 100).coerceIn(dp(180), rootWidth)
-        val maxPreviewHeight = (rootHeight * 40 / 100).coerceAtLeast(dp(100))
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val aspect = targetWidth.toFloat() / targetHeight.toFloat()
-        var desktopWidth = maxPreviewWidth
-        var desktopHeight = (desktopWidth / aspect).toInt()
-        if (desktopHeight > maxPreviewHeight) {
-            desktopHeight = maxPreviewHeight
-            desktopWidth = (desktopHeight * aspect).toInt()
-        }
         val previewParams = preview?.layoutParams as? FrameLayout.LayoutParams
-        if (previewParams != null &&
-            (previewParams.width != desktopWidth || previewParams.height != desktopHeight ||
-                previewParams.gravity != (Gravity.TOP or Gravity.CENTER_HORIZONTAL))
-        ) {
-            previewParams.width = desktopWidth
-            previewParams.height = desktopHeight
-            previewParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            preview?.layoutParams = previewParams
-        }
         val panelParams = bottomPanel.layoutParams as? FrameLayout.LayoutParams
-        if (panelParams != null) {
-            val panelHeight = (rootHeight * 30 / 100).coerceAtLeast(dp(120))
-            val desiredTop = (rootHeight * 70 / 100).coerceAtMost(rootHeight - panelHeight)
-            if (panelParams.topMargin != desiredTop || panelParams.height != panelHeight ||
-                panelParams.gravity != Gravity.TOP
-            ) {
-                panelParams.gravity = Gravity.TOP
-                panelParams.topMargin = desiredTop
-                panelParams.bottomMargin = 0
-                panelParams.height = panelHeight
-                bottomPanel.layoutParams = panelParams
-            }
-        }
         val keyboardParams = keyboardPanel.layoutParams as? FrameLayout.LayoutParams
-        if (keyboardParams != null) {
-            keyboardPanel.visibility = if (keyboardPanelVisible) View.VISIBLE else View.GONE
-            val availableKeyboardWidth = (rootWidth - dp(14)).coerceAtLeast(dp(260).coerceAtMost(rootWidth))
-            val keyboardWidth = (availableKeyboardWidth * keyboardWidthPercent / 100).coerceIn(dp(260).coerceAtMost(rootWidth), rootWidth)
-            val keyboardHeight = dp(keyboardHeightDp).coerceAtMost(rootHeight)
-            val desiredGravity = if (keyboardHasCustomPosition) Gravity.TOP or Gravity.START else Gravity.BOTTOM
-            if (keyboardHasCustomPosition) {
-                keyboardPositionX = keyboardPositionX.coerceIn(0, (rootWidth - keyboardWidth).coerceAtLeast(0))
-                keyboardPositionY = keyboardPositionY.coerceIn(0, (rootHeight - keyboardHeight).coerceAtLeast(0))
-                keyboardParams.leftMargin = keyboardPositionX
-                keyboardParams.topMargin = keyboardPositionY
-                keyboardParams.rightMargin = 0
-                keyboardParams.bottomMargin = 0
-            } else {
-                keyboardParams.leftMargin = dp(7)
-                keyboardParams.rightMargin = dp(7)
-                keyboardParams.bottomMargin = dp(12)
-                keyboardParams.topMargin = 0
+
+        if (landscape) {
+            // Three fixed columns: keyboard | virtual screen | touchpad.
+            // The SurfaceView keeps its source aspect ratio and stays centered.
+            val sideGap = dp(6)
+            val keyboardWidth = (rootWidth * 30 / 100).coerceAtLeast(dp(190))
+            val touchWidth = (rootWidth * 27 / 100).coerceAtLeast(dp(170))
+            val centerWidth = (rootWidth - keyboardWidth - touchWidth - sideGap * 4).coerceAtLeast(dp(180))
+            val maxCenterHeight = (rootHeight * 92 / 100).coerceAtLeast(dp(100))
+            var desktopWidth = centerWidth
+            var desktopHeight = (desktopWidth / aspect).toInt()
+            if (desktopHeight > maxCenterHeight) {
+                desktopHeight = maxCenterHeight
+                desktopWidth = (desktopHeight * aspect).toInt()
             }
-            if (keyboardParams.width != keyboardWidth || keyboardParams.height != keyboardHeight ||
-                keyboardParams.gravity != desiredGravity
-            ) {
-                keyboardParams.width = keyboardWidth
-                keyboardParams.height = keyboardHeight
-                keyboardParams.gravity = desiredGravity
-                keyboardPanel.layoutParams = keyboardParams
+            previewParams?.let {
+                it.width = desktopWidth
+                it.height = desktopHeight
+                it.gravity = Gravity.CENTER
+                it.leftMargin = 0; it.rightMargin = 0; it.topMargin = 0; it.bottomMargin = 0
+                preview?.layoutParams = it
+            }
+            panelParams?.let {
+                it.width = touchWidth
+                it.height = (rootHeight * 94 / 100).coerceAtLeast(dp(130))
+                it.gravity = Gravity.RIGHT or Gravity.CENTER_VERTICAL
+                it.leftMargin = 0; it.rightMargin = sideGap; it.topMargin = 0; it.bottomMargin = 0
+                bottomPanel.layoutParams = it
+            }
+            keyboardParams?.let {
+                keyboardPanel.visibility = if (keyboardPanelVisible) View.VISIBLE else View.GONE
+                it.width = keyboardWidth
+                it.height = (rootHeight * 94 / 100).coerceAtLeast(dp(170))
+                it.gravity = Gravity.LEFT or Gravity.CENTER_VERTICAL
+                it.leftMargin = sideGap; it.rightMargin = 0; it.topMargin = 0; it.bottomMargin = 0
+                keyboardHasCustomPosition = false
+                keyboardPanel.layoutParams = it
+            }
+        } else {
+            // Portrait keeps the existing stacked layout and floating keyboard behavior.
+            val maxPreviewWidth = (rootWidth * previewSizePercent / 100).coerceIn(dp(180), rootWidth)
+            val maxPreviewHeight = (rootHeight * 40 / 100).coerceAtLeast(dp(100))
+            var desktopWidth = maxPreviewWidth
+            var desktopHeight = (desktopWidth / aspect).toInt()
+            if (desktopHeight > maxPreviewHeight) {
+                desktopHeight = maxPreviewHeight
+                desktopWidth = (desktopHeight * aspect).toInt()
+            }
+            previewParams?.let {
+                it.width = desktopWidth
+                it.height = desktopHeight
+                it.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                it.leftMargin = 0; it.rightMargin = 0
+                preview?.layoutParams = it
+            }
+            panelParams?.let {
+                val panelHeight = (rootHeight * 30 / 100).coerceAtLeast(dp(120))
+                it.width = rootWidth - dp(14)
+                it.height = panelHeight
+                it.gravity = Gravity.TOP
+                it.topMargin = (rootHeight * 70 / 100).coerceAtMost(rootHeight - panelHeight)
+                it.bottomMargin = 0
+                it.leftMargin = dp(7); it.rightMargin = dp(7)
+                bottomPanel.layoutParams = it
+            }
+            keyboardParams?.let {
+                keyboardPanel.visibility = if (keyboardPanelVisible) View.VISIBLE else View.GONE
+                val availableKeyboardWidth = (rootWidth - dp(14)).coerceAtLeast(dp(260).coerceAtMost(rootWidth))
+                val keyboardWidth = (availableKeyboardWidth * keyboardWidthPercent / 100).coerceIn(dp(260).coerceAtMost(rootWidth), rootWidth)
+                val keyboardHeight = dp(keyboardHeightDp).coerceAtMost(rootHeight)
+                val desiredGravity = if (keyboardHasCustomPosition) Gravity.TOP or Gravity.START else Gravity.BOTTOM
+                if (keyboardHasCustomPosition) {
+                    keyboardPositionX = keyboardPositionX.coerceIn(0, (rootWidth - keyboardWidth).coerceAtLeast(0))
+                    keyboardPositionY = keyboardPositionY.coerceIn(0, (rootHeight - keyboardHeight).coerceAtLeast(0))
+                    it.leftMargin = keyboardPositionX; it.topMargin = keyboardPositionY
+                    it.rightMargin = 0; it.bottomMargin = 0
+                } else {
+                    it.leftMargin = dp(7); it.rightMargin = dp(7)
+                    it.bottomMargin = dp(12); it.topMargin = 0
+                }
+                it.width = keyboardWidth
+                it.height = keyboardHeight
+                it.gravity = desiredGravity
+                keyboardPanel.layoutParams = it
             }
         }
     }
