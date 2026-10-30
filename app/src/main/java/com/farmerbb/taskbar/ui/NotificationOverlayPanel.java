@@ -532,7 +532,7 @@ public final class NotificationOverlayPanel {
     }
 
     private TextView makeQuickSettingTile(String icon, String title, String state, boolean selected) {
-        TextView tile = makeText(icon + "   " + title + "\\n" + state, 12, Color.WHITE, true);
+        TextView tile = makeText(icon + "   " + title + "\n" + state, 12, Color.WHITE, true);
         tile.setGravity(Gravity.CENTER_VERTICAL);
         tile.setPadding(dp(13), dp(7), dp(8), dp(7));
         tile.setBackground(GlassBackgrounds.createGlassSurface(context, 18,
