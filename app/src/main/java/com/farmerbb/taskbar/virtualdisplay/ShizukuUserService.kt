@@ -732,6 +732,26 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
         }
     }
 
+    /** Requests Magisk root interactively; this does not expose arbitrary shell execution. */
+    override fun requestRootAccess(): String {
+        return try {
+            val result = runShizukuShell("su -c id", timeoutMs = 30000L, maxCharacters = 500)
+            val output = result.second.trim()
+            val granted = result.first == 0 && Regex("""(?:^|\\s)uid=0(?:\\(|\\s|$)""").containsMatchIn(output)
+            lastError = if (granted) {
+                "Akses root aktif • $output"
+            } else {
+                "Akses root belum diberikan • exit=${result.first} • ${output.ifBlank { "tanpa keluaran" }}"
+            }
+            Log.i(TAG, lastError)
+            lastError
+        } catch (error: Throwable) {
+            lastError = "Pemeriksaan root gagal • ${error.javaClass.simpleName}: ${error.message}"
+            Log.w(TAG, lastError, error)
+            lastError
+        }
+    }
+
     override fun getLastError(): String = lastError
 
     override fun destroy() {
