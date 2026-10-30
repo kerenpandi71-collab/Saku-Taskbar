@@ -608,8 +608,24 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             elevation = dp(8).toFloat()
         }
         val panelHeader = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val touchpadMoveHandle = TextView(this).apply {
+            text = "⠿ PINDAH"
+            textSize = 9f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(dp(7), 0, dp(7), 0)
+            contentDescription = "Seret untuk memindahkan posisi touchpad"
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(47, 83, 108))
+                cornerRadius = dp(6).toFloat()
+            }
+        }
+        panelHeader.addView(touchpadMoveHandle, LinearLayout.LayoutParams(dp(68), dp(26)).apply {
+            rightMargin = dp(5)
+        })
         panelHeader.addView(TextView(this).apply {
-            text = "TRACKPAD • 1 jari kursor / tap klik / 2 jari scroll   ⋮⋮"
+            text = "TRACKPAD • 1 jari kursor / tap klik / 2 jari scroll"
             textSize = 9f
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
@@ -630,7 +646,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             topBar.visibility = View.VISIBLE
             status.text = "Pengaturan resolusi dan DPI tersedia di panel Saku Desktop."
         }, LinearLayout.LayoutParams(dp(38), dp(28)))
-        panelHeader.setOnTouchListener { _, event ->
+        touchpadMoveHandle.setOnTouchListener { _, event ->
             if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) return@setOnTouchListener false
             val params = bottomPanel.layoutParams as? FrameLayout.LayoutParams ?: return@setOnTouchListener false
             when (event.actionMasked) {
