@@ -141,7 +141,11 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         keyboardHasCustomPosition = keyboardPrefs.getBoolean("custom_position", false)
         keyboardPositionX = keyboardPrefs.getInt("position_x", 0)
         keyboardPositionY = keyboardPrefs.getInt("position_y", 0)
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        // Keep the IME host on the phone display; never auto-open Gboard on Activity launch.
+        window.setSoftInputMode(
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING or
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
+        )
         applyImmersiveMode()
 
         // SurfaceView tetap memenuhi root; toolbar, kursor, touchpad, dan log adalah overlay.
@@ -730,7 +734,9 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                 android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                 android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+            // Stay attached/focusable for a valid InputConnection while remaining invisible.
             alpha = 0.01f
+            visibility = View.VISIBLE
             setTextColor(Color.TRANSPARENT)
             setHintTextColor(Color.TRANSPARENT)
             background = null
@@ -902,35 +908,59 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
     }
 
     private fun showSystemKeyboardBridge() {
-        if ((virtualDisplayController?.displayId ?: -1) < 0) {
+        val targetDisplayId = virtualDisplayController?.displayId ?: -1
+        if (targetDisplayId < 0) {
             status.text = "Mulai virtual display dahulu."
             return
         }
-        // Gboard and the Cyberdeck keyboard are independent input methods:
-        // keep the custom keyboard visible so its keys remain usable while Gboard
-        // is shown on the physical display.
+        // Gboard must be hosted by this Activity on the physical built-in display 0.
+        val hostDisplayId = if (android.os.Build.VERSION.SDK_INT >= 30) display?.displayId ?: -1 else 0
+        if (hostDisplayId != 0) {
+            appendRuntimeLog("Gboard dibatalkan: Activity berada di display $hostDisplayId, bukan built-in display 0.")
+            status.text = "Buka kontrol VDT dari layar HP utama (Display 0) untuk memakai Gboard."
+            return
+        }
         if (::keyboardPanel.isInitialized && keyboardPanelVisible) {
             keyboardPanel.visibility = View.VISIBLE
         }
         val root = preview?.parent as? View
         if (root != null) updateDesktopLayout(root.width, root.height)
 
-        // Own the InputConnection on the host Activity (physical display 0).
-        // Composition and committed text are forwarded to the virtual-display editor.
         systemKeyboardRequested = true
         imeBridgeEditText.visibility = View.VISIBLE
+        imeBridgeEditText.isFocusable = true
+        imeBridgeEditText.isFocusableInTouchMode = true
         imeBridgeEditText.requestFocus()
-        imeBridgeEditText.post {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            val shown = imm.showSoftInput(imeBridgeEditText, InputMethodManager.SHOW_IMPLICIT)
-            appendRuntimeLog("Gboard host display 0 • showRequested=" + shown +
-                " • token=" + (imeBridgeEditText.windowToken != null))
-            status.text = if (shown) {
-                "Gboard tampil di layar HP • teks diteruskan ke aplikasi virtual display."
-            } else {
-                "Gboard belum tampil • coba tekan Keyboard Android sekali lagi."
+
+        // Some OEM builds ignore showSoftInput until the host window is attached and focused.
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val handler = Handler(Looper.getMainLooper())
+        var attempts = 0
+        val showTask = object : Runnable {
+            override fun run() {
+                if (!systemKeyboardRequested || isFinishing || isDestroyed) return
+                attempts++
+                imeBridgeEditText.requestFocus()
+                val windowReady = window.decorView.isAttachedToWindow &&
+                    window.decorView.hasWindowFocus() &&
+                    imeBridgeEditText.windowToken != null
+                val shown = if (windowReady) {
+                    imm.showSoftInput(imeBridgeEditText, InputMethodManager.SHOW_IMPLICIT)
+                } else false
+                appendRuntimeLog(
+                    "Gboard host=0 target=$targetDisplayId attempt=$attempts " +
+                        "windowReady=$windowReady requested=$shown active=${imm.isActive(imeBridgeEditText)}"
+                )
+                if (shown || imm.isActive(imeBridgeEditText)) {
+                    status.text = "Gboard diminta di layar HP (Display 0)."
+                } else if (attempts < 6) {
+                    handler.postDelayed(this, 180L)
+                } else {
+                    status.text = "Gboard gagal dibuka • pastikan Activity VDT berada di layar HP utama."
+                }
             }
         }
+        imeBridgeEditText.post(showTask)
     }
 
     private fun shellQuote(value: String): String =
