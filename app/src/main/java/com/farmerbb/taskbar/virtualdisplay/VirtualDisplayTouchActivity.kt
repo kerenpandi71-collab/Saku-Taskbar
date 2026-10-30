@@ -731,16 +731,18 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             setTextColor(Color.TRANSPARENT)
             setHintTextColor(Color.TRANSPARENT)
             background = null
-            isFocusable = false
-            isFocusableInTouchMode = false
+            // Host the IME proxy on the physical phone display (display 0).
+            // It must remain focusable so Gboard cannot attach to the virtual display.
+            isFocusable = true
+            isFocusableInTouchMode = true
             setShowSoftInputOnFocus(true)
             importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
             contentDescription = "Jembatan input Gboard ke virtual display"
 
         }
-        // Input Gboard tidak lagi ditangkap oleh EditText dummy di display 0.
-        // Fokus harus tetap dimiliki editor aplikasi yang berjalan pada virtual display.
-        imeBridgeEditText.visibility = View.GONE
+        // Keep the proxy attached to the host window (display 0).
+        // GONE would remove its InputConnection and let Android route IME elsewhere.
+        imeBridgeEditText.visibility = View.VISIBLE
         root.addView(imeBridgeEditText, FrameLayout.LayoutParams(dp(1), dp(1), Gravity.TOP or Gravity.START))
         setContentView(root)
     }
@@ -889,7 +891,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             systemKeyboardRequested = false
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(imeBridgeEditText.windowToken, 0)
-            status.text = "Keyboard Android disembunyikan."
+            imeBridgeEditText.clearFocus()
+            status.text = "Gboard disembunyikan • fokus virtual display tetap tersedia."
         } else {
             showSystemKeyboardBridge()
         }
@@ -905,12 +908,22 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         val root = preview?.parent as? View
         if (root != null) updateDesktopLayout(root.width, root.height)
 
-        // Jangan fokuskan EditText milik Activity utama: itu akan menjadikan display 0
-        // sebagai target input, bukan aplikasi yang sedang aktif di virtual display.
-        // Dengan FALLBACK_DISPLAY, pengguna cukup fokuskan kolom teks di aplikasi virtual;
-        // Android akan menampilkan Gboard di layar utama untuk editor tersebut.
+        // Own the InputConnection on the host Activity (physical display 0).
+        // Composition and committed text are forwarded to the virtual-display editor.
         systemKeyboardRequested = true
-        status.text = "Mode Gboard langsung aktif • ketuk kolom teks di aplikasi virtual display. Keyboard akan muncul di layar utama."
+        imeBridgeEditText.visibility = View.VISIBLE
+        imeBridgeEditText.requestFocus()
+        imeBridgeEditText.post {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val shown = imm.showSoftInput(imeBridgeEditText, InputMethodManager.SHOW_IMPLICIT)
+            appendRuntimeLog("Gboard host display 0 • showRequested=" + shown +
+                " • token=" + (imeBridgeEditText.windowToken != null))
+            status.text = if (shown) {
+                "Gboard tampil di layar HP • teks diteruskan ke aplikasi virtual display."
+            } else {
+                "Gboard belum tampil • coba tekan Keyboard Android sekali lagi."
+            }
+        }
     }
 
     private fun shellQuote(value: String): String =
