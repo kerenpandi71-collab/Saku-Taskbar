@@ -446,6 +446,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         root.addView(topBar, FrameLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP).apply {
             leftMargin = dp(7); rightMargin = dp(7); topMargin = dp(7)
         })
+        var gamepadOverlay: VirtualMobaGamepadView? = null
         val assistantBall = TextView(this).apply {
             text = "S"
             textSize = 18f
@@ -545,7 +546,6 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             }
         }
         root.addView(assistantBall, ballParams)
-        var gamepadOverlay: VirtualMobaGamepadView? = null
         gamepadOverlay = VirtualMobaGamepadView(
             this,
             { virtualDisplayController },
