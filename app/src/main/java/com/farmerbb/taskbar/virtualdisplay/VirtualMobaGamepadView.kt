@@ -30,6 +30,7 @@ internal class VirtualMobaGamepadView(
     )
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val active = linkedMapOf<Int, Control>()
+    private val activePositions = linkedMapOf<Int, Pair<Float, Float>>()
     private var editMode = false
     private var dragId: Int? = null
     private var lastX = 0f
@@ -95,6 +96,7 @@ internal class VirtualMobaGamepadView(
                     lastX = event.getX(index); lastY = event.getY(index)
                 } else {
                     active[id] = c
+                    activePositions[id] = event.getX(index) to event.getY(index)
                     inject(event)
                 }
             }
@@ -107,7 +109,13 @@ internal class VirtualMobaGamepadView(
                         it.y = (it.y + (event.getY(index) - lastY) / height).coerceIn(.08f, .94f)
                     }
                     lastX = event.getX(index); lastY = event.getY(index)
-                } else inject(event)
+                } else {
+                    for (i in 0 until event.pointerCount) {
+                        val id = event.getPointerId(i)
+                        if (active[id]?.id == "stick") activePositions[id] = event.getX(i) to event.getY(i)
+                    }
+                    inject(event)
+                }
             }
             MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP -> {
                 if (editMode) {
@@ -115,12 +123,15 @@ internal class VirtualMobaGamepadView(
                     persist()
                 } else {
                     inject(event)
-                    active.remove(event.getPointerId(event.actionIndex))
+                    val id = event.getPointerId(event.actionIndex)
+                    active.remove(id)
+                    activePositions.remove(id)
                 }
             }
             MotionEvent.ACTION_CANCEL -> {
                 if (!editMode) inject(event)
                 active.clear()
+                activePositions.clear()
                 dragId = null
             }
         }
@@ -133,8 +144,31 @@ internal class VirtualMobaGamepadView(
         val (targetW, targetH) = targetSize()
         if (targetW <= 0 || targetH <= 0) return
         val ids = IntArray(event.pointerCount) { event.getPointerId(it) }
-        val xs = FloatArray(event.pointerCount) { event.getX(it) / width * targetW }
-        val ys = FloatArray(event.pointerCount) { event.getY(it) / height * targetH }
+        val xs = FloatArray(event.pointerCount)
+        val ys = FloatArray(event.pointerCount)
+        val stick = controls.first { it.id == "stick" }
+        val baseX = stick.x * width
+        val baseY = stick.y * height
+        val radius = stick.radius * minOf(width, height) * .72f
+        for (i in 0 until event.pointerCount) {
+            val id = event.getPointerId(i)
+            val control = active[id]
+            var x = event.getX(i)
+            var y = event.getY(i)
+            if (control?.id == "stick") {
+                val dx = x - baseX
+                val dy = y - baseY
+                val distance = hypot(dx, dy)
+                val factor = if (distance > radius && distance > 0f) radius / distance else 1f
+                x = baseX + dx * factor
+                y = baseY + dy * factor
+            } else if (control != null) {
+                x = control.x * width
+                y = control.y * height
+            }
+            xs[i] = x / width * targetW
+            ys[i] = y / height * targetH
+        }
         // ACTION_POINTER_DOWN/UP carry the original pointer index in the action bits.
         display.injectTouchPoints(event.action, ids, xs, ys)
     }
