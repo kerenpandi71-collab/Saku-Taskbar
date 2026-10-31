@@ -56,6 +56,12 @@ internal class VirtualMobaGamepadView(
             paint.color = if (active.values.any { it.id == c.id }) Color.argb(220, 35, 160, 235)
                 else Color.argb(if (editMode) 205 else 155, 12, 25, 42)
             canvas.drawCircle(cx, cy, r, paint)
+            if (c.id == "stick") {
+                val point = active.entries.firstOrNull { it.value.id == "stick" }?.key?.let { activePositions[it] }
+                paint.style = Paint.Style.FILL
+                paint.color = Color.argb(220, 225, 240, 255)
+                canvas.drawCircle(point?.first ?: cx, point?.second ?: cy, r * .34f, paint)
+            }
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = dp(2).toFloat()
             paint.color = if (editMode) Color.YELLOW else Color.argb(220, 210, 235, 255)
