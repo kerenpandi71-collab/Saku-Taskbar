@@ -501,6 +501,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                         menu.menu.add(0, 5, 4, if (gamepadOverlay?.visibility == View.VISIBLE) "Sembunyikan Virtual Game Pad" else "Tampilkan Virtual Game Pad")
                         menu.menu.add(0, 6, 5, "Atur posisi tombol Game Pad")
                         menu.menu.add(0, 7, 6, "Pemetaan titik sentuh")
+                        menu.menu.add(0, 8, 7, "Atur ukuran masing-masing tombol")
                         menu.setOnMenuItemClickListener { item ->
                             when (item.itemId) {
                                 1 -> topBar.visibility = View.VISIBLE
@@ -548,6 +549,47 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                                                     status.text = "Titik target " + labels[which] + " tersimpan."
                                                 }
                                                 status.text = "Ketuk lokasi target " + labels[which] + " pada area layar."
+                                            }.setNegativeButton("Batal", null).show()
+                                    }
+                                }
+                                8 -> {
+                                    val overlay = gamepadOverlay
+                                    if (overlay == null) {
+                                        status.text = "Tampilkan Virtual Game Pad dahulu."
+                                    } else {
+                                        val ids = arrayOf("stick", "attack", "skill1", "skill2", "skill3", "ult", "spell")
+                                        val labels = arrayOf("Analog / Gerak", "Attack", "Skill 1", "Skill 2", "Skill 3", "Ultimate", "Spell")
+                                        AlertDialog.Builder(this)
+                                            .setTitle("Pilih tombol yang ukurannya ingin diubah")
+                                            .setItems(labels) { _, which ->
+                                                val controlId = ids[which]
+                                                val seek = SeekBar(this).apply {
+                                                    max = 135
+                                                    progress = ((overlay.getControlSize(controlId) * 1000f).toInt() - 25).coerceIn(0, 135)
+                                                }
+                                                val value = TextView(this).apply {
+                                                    text = "Ukuran: ${(seek.progress + 25) / 10f}% dari sisi pendek layar"
+                                                    setPadding(dp(20), dp(12), dp(20), dp(4))
+                                                }
+                                                val panel = LinearLayout(this).apply {
+                                                    orientation = LinearLayout.VERTICAL
+                                                    addView(value)
+                                                    addView(seek, LinearLayout.LayoutParams(-1, -2))
+                                                }
+                                                seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                                                    override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
+                                                        val radius = (progress + 25) / 1000f
+                                                        overlay.setControlSize(controlId, radius)
+                                                        value.text = "Ukuran: ${(progress + 25) / 10f}% dari sisi pendek layar"
+                                                    }
+                                                    override fun onStartTrackingTouch(bar: SeekBar?) {}
+                                                    override fun onStopTrackingTouch(bar: SeekBar?) {}
+                                                })
+                                                AlertDialog.Builder(this)
+                                                    .setTitle("Ukuran ${labels[which]}")
+                                                    .setView(panel)
+                                                    .setPositiveButton("Selesai", null)
+                                                    .show()
                                             }.setNegativeButton("Batal", null).show()
                                     }
                                 }
