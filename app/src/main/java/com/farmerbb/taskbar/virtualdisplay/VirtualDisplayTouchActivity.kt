@@ -1406,6 +1406,38 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         }
     }
 
+    private fun sendKeyboardEditCommand(label: String) {
+        val keyCode = when (label) {
+            "Cut" -> android.view.KeyEvent.KEYCODE_CUT
+            "Copy" -> android.view.KeyEvent.KEYCODE_COPY
+            "Paste" -> android.view.KeyEvent.KEYCODE_PASTE
+            "Select all" -> android.view.KeyEvent.KEYCODE_A
+            else -> return
+        }
+        val displayId = virtualDisplayController?.displayId ?: -1
+        if (displayId < 0) {
+            status.text = "Mulai virtual display dahulu."
+            return
+        }
+        val meta = if (label == "Select all") android.view.KeyEvent.META_CTRL_ON else 0
+        keyboardInputExecutor.execute {
+            val accepted = virtualDisplayController?.injectKeyEvents(
+                intArrayOf(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.ACTION_UP),
+                intArrayOf(keyCode, keyCode),
+                intArrayOf(meta, meta)
+            ) ?: false
+            runOnUiThread {
+                if (accepted) {
+                    status.text = "$label dikirim ke aplikasi pada display $displayId."
+                    appendRuntimeLog("Keyboard edit: $label • display=$displayId")
+                } else {
+                    status.text = "$label gagal dikirim."
+                    appendRuntimeLog("Keyboard edit gagal ($label): ${shizukuBridge.getLastError()}")
+                }
+            }
+        }
+    }
+
     private fun sendKeyboardKey(keyCode: Int) {
         val meta = (if (cyberShift) android.view.KeyEvent.META_SHIFT_ON else 0) or
             (if (cyberCtrl) android.view.KeyEvent.META_CTRL_ON else 0) or
