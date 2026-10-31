@@ -772,7 +772,7 @@ class ShizukuUserService() : IVirtualDisplayService.Stub() {
                 timeoutMs = 8000L,
                 maxCharacters = 80000
             )
-            val taskHeader = Regex("""(?i)Task\{[^}]*?#([0-9]+)[^}]*?}""")
+            val taskHeader = Regex("""(?i)Task\{[^}]*?#([0-9]+)[^}]*?\}""")
             val displayMarker = Regex(
                 """(?i)(?:mDisplayId|displayId|display\s*id)\s*[=:]\s*([0-9]+)|display\s*#\s*([0-9]+)"""
             )
