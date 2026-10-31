@@ -500,6 +500,7 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                         menu.menu.add(0, 4, 3, if (keyboardPanelVisible) "Sembunyikan keyboard Cyberdeck" else "Tampilkan keyboard Cyberdeck")
                         menu.menu.add(0, 5, 4, if (gamepadOverlay?.visibility == View.VISIBLE) "Sembunyikan Virtual Game Pad" else "Tampilkan Virtual Game Pad")
                         menu.menu.add(0, 6, 5, "Atur posisi tombol Game Pad")
+                        menu.menu.add(0, 7, 6, "Pemetaan titik sentuh")
                         menu.setOnMenuItemClickListener { item ->
                             when (item.itemId) {
                                 1 -> topBar.visibility = View.VISIBLE
@@ -532,6 +533,22 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                                             .setPositiveButton("Selesai") { _, _ -> gamepadOverlay?.setEditMode(false) }
                                             .setNegativeButton("Batal") { _, _ -> gamepadOverlay?.setEditMode(false) }
                                             .show()
+                                    }
+                                }                                7 -> {
+                                    val overlay = gamepadOverlay
+                                    if (overlay == null || (virtualDisplayController?.displayId ?: -1) < 0) {
+                                        status.text = "Aktifkan virtual display dahulu."
+                                    } else {
+                                        val ids = arrayOf("stick", "attack", "skill1", "skill2", "skill3", "ult", "spell")
+                                        val labels = arrayOf("Analog / Gerak", "Attack", "Skill 1", "Skill 2", "Skill 3", "Ultimate", "Spell")
+                                        AlertDialog.Builder(this).setTitle("Pilih kontrol untuk dipetakan")
+                                            .setItems(labels) { _, which ->
+                                                overlay.visibility = View.VISIBLE
+                                                overlay.startMapping(ids[which]) {
+                                                    status.text = "Titik target " + labels[which] + " tersimpan."
+                                                }
+                                                status.text = "Ketuk lokasi target " + labels[which] + " pada area layar."
+                                            }.setNegativeButton("Batal", null).show()
                                     }
                                 }
                             }
