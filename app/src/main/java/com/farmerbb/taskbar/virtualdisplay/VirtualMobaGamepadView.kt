@@ -19,7 +19,7 @@ internal class VirtualMobaGamepadView(
     private val targetSize: () -> Pair<Int, Int>,
     private val targetBounds: () -> android.graphics.RectF?
 ) : View(context) {
-    private data class Control(val id: String, var x: Float, var y: Float, val label: String, val radius: Float, var targetX: Float, var targetY: Float)
+    private data class Control(val id: String, var x: Float, var y: Float, val label: String, var radius: Float, var targetX: Float, var targetY: Float)
     private val prefs = context.getSharedPreferences("saku_moba_gamepad", Context.MODE_PRIVATE)
     private val controls = mutableListOf(
         Control("stick", .14f, .76f, "MOVE", .105f, .14f, .76f),
@@ -47,6 +47,7 @@ internal class VirtualMobaGamepadView(
             c.y = prefs.getFloat("${c.id}_y", c.y).coerceIn(.08f, .94f)
             c.targetX = prefs.getFloat("${c.id}_target_x", c.targetX).coerceIn(0f, 1f)
             c.targetY = prefs.getFloat("${c.id}_target_y", c.targetY).coerceIn(0f, 1f)
+            c.radius = prefs.getFloat("${c.id}_size", c.radius).coerceIn(.025f, .16f)
         }
         isClickable = true
         contentDescription = "Virtual Game Pad MOBA. Tahan tombol untuk mengatur posisi."
@@ -129,6 +130,16 @@ internal class VirtualMobaGamepadView(
 
     fun cancelMapping() { mappingControl = null; mappingCallback = null; invalidate() }
 
+    fun getControlSize(controlId: String): Float = controls.firstOrNull { it.id == controlId }?.radius ?: .05f
+
+    fun setControlSize(controlId: String, size: Float) {
+        controls.firstOrNull { it.id == controlId }?.let {
+            it.radius = size.coerceIn(.025f, .16f)
+            persist()
+            invalidate()
+        }
+    }
+
     fun setEditMode(enabled: Boolean) {
         editMode = enabled
         if (!enabled) persist()
@@ -164,7 +175,7 @@ internal class VirtualMobaGamepadView(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val index = event.actionIndex
                 val id = event.getPointerId(index)
-                val c = hit(event.getX(index), event.getY(index)) ?: return false
+                val c = hit(event.getX(index), event.getY(index)) ?: return active.isNotEmpty() || editMode
                 if (editMode) {
                     dragId = id
                     lastX = event.getX(index); lastY = event.getY(index)
@@ -194,8 +205,13 @@ internal class VirtualMobaGamepadView(
                         if (control?.id == "stick") activePositions[id] = event.getX(i) to event.getY(i)
                         if (control?.id == "skill2") {
                             val size = targetSize()
-                            val dx = (event.getX(i) - control.x * width) / width * size.first
-                            val dy = (event.getY(i) - control.y * height) / height * size.second
+                            val rawDx = event.getX(i) - control.x * width
+                            val rawDy = event.getY(i) - control.y * height
+                            val maxTravel = control.radius * minOf(width, height) * 2.5f
+                            val distance = hypot(rawDx, rawDy)
+                            val factor = if (distance > maxTravel && distance > 0f) maxTravel / distance else 1f
+                            val dx = rawDx * factor / width * size.first
+                            val dy = rawDy * factor / height * size.second
                             aimPositions[id] = (control.targetX * size.first + dx).coerceIn(0f, (size.first - 1).toFloat()) to (control.targetY * size.second + dy).coerceIn(0f, (size.second - 1).toFloat())
                         }
                     }
@@ -268,6 +284,7 @@ internal class VirtualMobaGamepadView(
             controls.forEach {
                 putFloat("${it.id}_x", it.x); putFloat("${it.id}_y", it.y)
                 putFloat("${it.id}_target_x", it.targetX); putFloat("${it.id}_target_y", it.targetY)
+                putFloat("${it.id}_size", it.radius)
             }
         }.apply()
     }
