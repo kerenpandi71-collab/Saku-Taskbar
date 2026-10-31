@@ -15,7 +15,8 @@ import kotlin.math.hypot
 internal class VirtualMobaGamepadView(
     context: Context,
     private val controller: () -> VirtualDisplayController?,
-    private val targetSize: () -> Pair<Int, Int>
+    private val targetSize: () -> Pair<Int, Int>,
+    private val targetBounds: () -> android.graphics.RectF?
 ) : View(context) {
     private data class Control(val id: String, var x: Float, var y: Float, val label: String, val radius: Float, var targetX: Float, var targetY: Float)
     private val prefs = context.getSharedPreferences("saku_moba_gamepad", Context.MODE_PRIVATE)
@@ -52,6 +53,29 @@ internal class VirtualMobaGamepadView(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val scale = minOf(width, height).toFloat()
+        // Show persistent target markers on the actual game preview, not just the floating controls.
+        targetBounds()?.takeIf { it.width() > 0f && it.height() > 0f }?.let { bounds ->
+            controls.forEach { c ->
+                val tx = bounds.left + c.targetX * bounds.width()
+                val ty = bounds.top + c.targetY * bounds.height()
+                val selected = mappingControl?.id == c.id
+                paint.style = Paint.Style.FILL
+                paint.color = if (selected) Color.argb(95, 255, 190, 35) else Color.argb(75, 0, 210, 235)
+                canvas.drawCircle(tx, ty, dp(19).toFloat(), paint)
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = dp(if (selected) 3 else 2).toFloat()
+                paint.color = if (selected) Color.YELLOW else Color.CYAN
+                canvas.drawCircle(tx, ty, dp(19).toFloat(), paint)
+                canvas.drawLine(tx - dp(25), ty, tx + dp(25), ty, paint)
+                canvas.drawLine(tx, ty - dp(25), tx, ty + dp(25), paint)
+                paint.style = Paint.Style.FILL
+                paint.color = Color.WHITE
+                paint.textAlign = Paint.Align.CENTER
+                paint.textSize = dp(11).toFloat()
+                paint.typeface = Typeface.DEFAULT_BOLD
+                canvas.drawText(c.label, tx, ty + dp(4).toFloat(), paint)
+            }
+        }
         controls.forEach { c ->
             val cx = c.x * width
             val cy = c.y * height
@@ -75,6 +99,16 @@ internal class VirtualMobaGamepadView(
             paint.textAlign = Paint.Align.CENTER
             paint.textSize = dp(if (c.id == "stick") 10 else 12).toFloat()
             canvas.drawText(c.label, cx, cy - (paint.ascent() + paint.descent()) / 2f, paint)
+        }
+        if (mappingControl != null) {
+            paint.style = Paint.Style.FILL
+            paint.color = Color.argb(225, 5, 18, 30)
+            canvas.drawRoundRect(dp(12).toFloat(), dp(12).toFloat(), width - dp(12).toFloat(), dp(48).toFloat(), dp(10).toFloat(), dp(10).toFloat(), paint)
+            paint.color = Color.WHITE
+            paint.textSize = dp(13).toFloat()
+            paint.textAlign = Paint.Align.CENTER
+            paint.typeface = Typeface.DEFAULT_BOLD
+            canvas.drawText("PETAKAN ${mappingControl?.label} • ketuk tepat di atas skill game", width / 2f, dp(35).toFloat(), paint)
         }
         if (editMode) {
             paint.color = Color.YELLOW
@@ -107,17 +141,21 @@ internal class VirtualMobaGamepadView(
         if (width <= 0 || height <= 0) return false
         if (mappingControl != null && event.actionMasked == MotionEvent.ACTION_DOWN) {
             val c = mappingControl!!
+            val bounds = targetBounds()
             val (tw, th) = targetSize()
-            if (tw > 0 && th > 0) {
-                c.targetX = (event.x / width).coerceIn(0f, 1f)
-                c.targetY = (event.y / height).coerceIn(0f, 1f)
+            if (bounds != null && bounds.width() > 0f && bounds.height() > 0f &&
+                event.x >= bounds.left && event.x <= bounds.right &&
+                event.y >= bounds.top && event.y <= bounds.bottom && tw > 0 && th > 0
+            ) {
+                c.targetX = ((event.x - bounds.left) / bounds.width()).coerceIn(0f, 1f)
+                c.targetY = ((event.y - bounds.top) / bounds.height()).coerceIn(0f, 1f)
                 persist()
                 val mappedId = c.id
                 mappingControl = null
                 mappingCallback?.invoke(mappedId)
                 mappingCallback = null
-                invalidate()
             }
+            invalidate()
             return true
         }
         when (event.actionMasked) {
