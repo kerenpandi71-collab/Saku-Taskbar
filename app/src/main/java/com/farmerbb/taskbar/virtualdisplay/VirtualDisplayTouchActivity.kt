@@ -497,6 +497,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                         menu.menu.add(0, 2, 1, if (systemKeyboardRequested) "Sembunyikan Keyboard Android" else "Keyboard Android")
                         menu.menu.add(0, 3, 2, "Keyboard Cyberdeck")
                         menu.menu.add(0, 4, 3, if (keyboardPanelVisible) "Sembunyikan keyboard Cyberdeck" else "Tampilkan keyboard Cyberdeck")
+                        menu.menu.add(0, 5, 4, if (gamepadOverlay?.visibility == View.VISIBLE) "Sembunyikan Virtual Game Pad" else "Tampilkan Virtual Game Pad")
+                        menu.menu.add(0, 6, 5, "Atur posisi tombol Game Pad")
                         menu.setOnMenuItemClickListener { item ->
                             when (item.itemId) {
                                 1 -> topBar.visibility = View.VISIBLE
@@ -506,6 +508,30 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
                                     keyboardPanelVisible = !keyboardPanelVisible
                                     keyboardPanel.visibility = if (keyboardPanelVisible) View.VISIBLE else View.GONE
                                     updateDesktopLayout(root.width, root.height)
+                                }
+                                5 -> {
+                                    if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+                                        status.text = "Virtual Game Pad hanya tersedia dalam mode landscape."
+                                    } else if ((virtualDisplayController?.displayId ?: -1) < 0) {
+                                        status.text = "Buat virtual display terlebih dahulu."
+                                    } else {
+                                        gamepadOverlay?.visibility = if (gamepadOverlay?.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                                        status.text = if (gamepadOverlay?.visibility == View.VISIBLE) "Virtual Game Pad aktif." else "Virtual Game Pad disembunyikan."
+                                    }
+                                }
+                                6 -> {
+                                    if (gamepadOverlay == null) {
+                                        status.text = "Tampilkan Virtual Game Pad dahulu."
+                                    } else {
+                                        gamepadOverlay?.visibility = View.VISIBLE
+                                        gamepadOverlay?.setEditMode(true)
+                                        AlertDialog.Builder(this)
+                                            .setTitle("Atur posisi Game Pad")
+                                            .setMessage("Seret analog dan tombol ke posisi yang kamu inginkan. Posisi tersimpan otomatis.")
+                                            .setPositiveButton("Selesai") { _, _ -> gamepadOverlay?.setEditMode(false) }
+                                            .setNegativeButton("Batal") { _, _ -> gamepadOverlay?.setEditMode(false) }
+                                            .show()
+                                    }
                                 }
                             }
                             true
@@ -519,6 +545,16 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             }
         }
         root.addView(assistantBall, ballParams)
+        var gamepadOverlay: VirtualMobaGamepadView? = null
+        gamepadOverlay = VirtualMobaGamepadView(
+            this,
+            { virtualDisplayController },
+            { targetWidth to targetHeight }
+        ).apply {
+            visibility = View.GONE
+            elevation = dp(24).toFloat()
+        }
+        root.addView(gamepadOverlay, FrameLayout.LayoutParams(-1, -1))
 
         // Keyboard sederhana bergaya Gboard: tombol besar, baris standar, tanpa tombol fungsi yang memenuhi ruang.
         // Area preview, trackpad, dan jalur Direct Touch sengaja tidak diubah.
