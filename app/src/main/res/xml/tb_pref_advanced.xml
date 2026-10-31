@@ -69,6 +69,11 @@
         android:title="@string/tb_override_freeform_unsupported"
         android:summary="@string/tb_override_freeform_unsupported_description"/>
 
+    <Preference
+        android:key="virtual_display_touch"
+        android:title="@string/tb_virtual_display_touch"
+        android:summary="@string/tb_virtual_display_touch_summary" />
+
     <PreferenceCategory android:key="dummy" android:title="\n\n" />
 
 </PreferenceScreen>

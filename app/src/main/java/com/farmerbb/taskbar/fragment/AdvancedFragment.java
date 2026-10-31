@@ -97,6 +97,7 @@ public class AdvancedFragment extends SettingsFragment {
             findPreference(PREF_LAUNCHER).setOnPreferenceClickListener(this);
             findPreference(PREF_NAVIGATION_BAR_BUTTONS).setOnPreferenceClickListener(this);
             findPreference(PREF_MANAGE_APP_DATA).setOnPreferenceClickListener(this);
+            findPreference("virtual_display_touch").setOnPreferenceClickListener(this);
 
             if(!U.isChromeOs(getActivity()))
                 findPreference(PREF_KEYBOARD_SHORTCUT).setOnPreferenceClickListener(this);
@@ -173,6 +174,10 @@ public class AdvancedFragment extends SettingsFragment {
         final SharedPreferences pref = U.getSharedPreferences(getActivity());
 
         switch(p.getKey()) {
+            case "virtual_display_touch":
+                Intent virtualDisplayIntent = new Intent(getActivity(), com.farmerbb.taskbar.virtualdisplay.VirtualDisplayTouchActivity.class);
+                startActivity(virtualDisplayIntent);
+                break;
             case PREF_LAUNCHER:
                 if(U.canDrawOverlays(getActivity())) {
                     U.setComponentEnabled(getActivity(), HomeActivity.class,
