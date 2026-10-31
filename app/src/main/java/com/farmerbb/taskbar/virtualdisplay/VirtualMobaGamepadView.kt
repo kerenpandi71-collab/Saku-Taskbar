@@ -17,21 +17,23 @@ internal class VirtualMobaGamepadView(
     private val controller: () -> VirtualDisplayController?,
     private val targetSize: () -> Pair<Int, Int>
 ) : View(context) {
-    private data class Control(val id: String, var x: Float, var y: Float, val label: String, val radius: Float)
+    private data class Control(val id: String, var x: Float, var y: Float, val label: String, val radius: Float, var targetX: Float, var targetY: Float)
     private val prefs = context.getSharedPreferences("saku_moba_gamepad", Context.MODE_PRIVATE)
     private val controls = mutableListOf(
-        Control("stick", .14f, .76f, "MOVE", .105f),
-        Control("attack", .87f, .78f, "ATK", .055f),
-        Control("skill1", .70f, .84f, "1", .052f),
-        Control("skill2", .78f, .91f, "2", .052f),
-        Control("skill3", .88f, .92f, "3", .052f),
-        Control("ult", .96f, .82f, "ULT", .052f),
-        Control("spell", .65f, .69f, "SP", .045f)
+        Control("stick", .14f, .76f, "MOVE", .105f, .14f, .76f),
+        Control("attack", .87f, .78f, "ATK", .055f, .87f, .78f),
+        Control("skill1", .70f, .84f, "1", .052f, .70f, .84f),
+        Control("skill2", .78f, .91f, "2", .052f, .78f, .91f),
+        Control("skill3", .88f, .92f, "3", .052f, .88f, .92f),
+        Control("ult", .96f, .82f, "ULT", .052f, .96f, .82f),
+        Control("spell", .65f, .69f, "SP", .045f, .65f, .69f)
     )
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val active = linkedMapOf<Int, Control>()
     private val activePositions = linkedMapOf<Int, Pair<Float, Float>>()
     private var editMode = false
+    private var mappingControl: Control? = null
+    private var mappingCallback: ((String) -> Unit)? = null
     private var dragId: Int? = null
     private var lastX = 0f
     private var lastY = 0f
@@ -40,6 +42,8 @@ internal class VirtualMobaGamepadView(
         controls.forEach { c ->
             c.x = prefs.getFloat("${c.id}_x", c.x).coerceIn(.04f, .96f)
             c.y = prefs.getFloat("${c.id}_y", c.y).coerceIn(.08f, .94f)
+            c.targetX = prefs.getFloat("${c.id}_target_x", c.targetX).coerceIn(0f, 1f)
+            c.targetY = prefs.getFloat("${c.id}_target_y", c.targetY).coerceIn(0f, 1f)
         }
         isClickable = true
         contentDescription = "Virtual Game Pad MOBA. Tahan tombol untuk mengatur posisi."
@@ -80,6 +84,15 @@ internal class VirtualMobaGamepadView(
         }
     }
 
+    fun startMapping(controlId: String, onMapped: (String) -> Unit) {
+        mappingControl = controls.firstOrNull { it.id == controlId } ?: return
+        mappingCallback = onMapped
+        editMode = false
+        invalidate()
+    }
+
+    fun cancelMapping() { mappingControl = null; mappingCallback = null; invalidate() }
+
     fun setEditMode(enabled: Boolean) {
         editMode = enabled
         if (!enabled) persist()
@@ -92,6 +105,21 @@ internal class VirtualMobaGamepadView(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (width <= 0 || height <= 0) return false
+        if (mappingControl != null && event.actionMasked == MotionEvent.ACTION_DOWN) {
+            val c = mappingControl!!
+            val (tw, th) = targetSize()
+            if (tw > 0 && th > 0) {
+                c.targetX = (event.x / width).coerceIn(0f, 1f)
+                c.targetY = (event.y / height).coerceIn(0f, 1f)
+                persist()
+                val mappedId = c.id
+                mappingControl = null
+                mappingCallback?.invoke(mappedId)
+                mappingCallback = null
+                invalidate()
+            }
+            return true
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val index = event.actionIndex
@@ -152,36 +180,38 @@ internal class VirtualMobaGamepadView(
         val ids = IntArray(event.pointerCount) { event.getPointerId(it) }
         val xs = FloatArray(event.pointerCount)
         val ys = FloatArray(event.pointerCount)
-        val stick = controls.first { it.id == "stick" }
-        val baseX = stick.x * width
-        val baseY = stick.y * height
-        val radius = stick.radius * minOf(width, height) * .72f
         for (i in 0 until event.pointerCount) {
             val id = event.getPointerId(i)
             val control = active[id]
-            var x = event.getX(i)
-            var y = event.getY(i)
+            var tx: Float
+            var ty: Float
             if (control?.id == "stick") {
-                val dx = x - baseX
-                val dy = y - baseY
+                val dx = event.getX(i) - control.x * width
+                val dy = event.getY(i) - control.y * height
+                val radius = control.radius * minOf(width, height) * .72f
                 val distance = hypot(dx, dy)
                 val factor = if (distance > radius && distance > 0f) radius / distance else 1f
-                x = baseX + dx * factor
-                y = baseY + dy * factor
+                tx = control.targetX * targetW + dx * factor / width * targetW
+                ty = control.targetY * targetH + dy * factor / height * targetH
             } else if (control != null) {
-                x = control.x * width
-                y = control.y * height
+                tx = control.targetX * targetW
+                ty = control.targetY * targetH
+            } else {
+                tx = event.getX(i) / width * targetW
+                ty = event.getY(i) / height * targetH
             }
-            xs[i] = x / width * targetW
-            ys[i] = y / height * targetH
+            xs[i] = tx.coerceIn(0f, (targetW - 1).toFloat())
+            ys[i] = ty.coerceIn(0f, (targetH - 1).toFloat())
         }
-        // ACTION_POINTER_DOWN/UP carry the original pointer index in the action bits.
         display.injectTouchPoints(event.action, ids, xs, ys)
     }
 
     private fun persist() {
         prefs.edit().apply {
-            controls.forEach { putFloat("${it.id}_x", it.x); putFloat("${it.id}_y", it.y) }
+            controls.forEach {
+                putFloat("${it.id}_x", it.x); putFloat("${it.id}_y", it.y)
+                putFloat("${it.id}_target_x", it.targetX); putFloat("${it.id}_target_y", it.targetY)
+            }
         }.apply()
     }
 
