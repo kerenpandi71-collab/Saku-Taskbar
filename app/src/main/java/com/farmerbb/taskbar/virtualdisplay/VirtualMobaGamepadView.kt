@@ -33,6 +33,7 @@ internal class VirtualMobaGamepadView(
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val active = linkedMapOf<Int, Control>()
     private val activePositions = linkedMapOf<Int, Pair<Float, Float>>()
+    private val aimPositions = linkedMapOf<Int, Pair<Float, Float>>()
     private var editMode = false
     private var mappingControl: Control? = null
     private var mappingCallback: ((String) -> Unit)? = null
@@ -170,6 +171,10 @@ internal class VirtualMobaGamepadView(
                 } else {
                     active[id] = c
                     activePositions[id] = event.getX(index) to event.getY(index)
+                    if (c.id == "skill2") {
+                        val size = targetSize()
+                        aimPositions[id] = c.targetX * size.first to c.targetY * size.second
+                    }
                     inject(event)
                 }
             }
@@ -185,7 +190,14 @@ internal class VirtualMobaGamepadView(
                 } else {
                     for (i in 0 until event.pointerCount) {
                         val id = event.getPointerId(i)
-                        if (active[id]?.id == "stick") activePositions[id] = event.getX(i) to event.getY(i)
+                        val control = active[id]
+                        if (control?.id == "stick") activePositions[id] = event.getX(i) to event.getY(i)
+                        if (control?.id == "skill2") {
+                            val size = targetSize()
+                            val dx = (event.getX(i) - control.x * width) / width * size.first
+                            val dy = (event.getY(i) - control.y * height) / height * size.second
+                            aimPositions[id] = (control.targetX * size.first + dx).coerceIn(0f, (size.first - 1).toFloat()) to (control.targetY * size.second + dy).coerceIn(0f, (size.second - 1).toFloat())
+                        }
                     }
                     inject(event)
                 }
@@ -199,12 +211,14 @@ internal class VirtualMobaGamepadView(
                     val id = event.getPointerId(event.actionIndex)
                     active.remove(id)
                     activePositions.remove(id)
+                    aimPositions.remove(id)
                 }
             }
             MotionEvent.ACTION_CANCEL -> {
                 if (!editMode) inject(event)
                 active.clear()
                 activePositions.clear()
+                aimPositions.clear()
                 dragId = null
             }
         }
@@ -232,6 +246,10 @@ internal class VirtualMobaGamepadView(
                 val factor = if (distance > radius && distance > 0f) radius / distance else 1f
                 tx = control.targetX * targetW + dx * factor / width * targetW
                 ty = control.targetY * targetH + dy * factor / height * targetH
+            } else if (control?.id == "skill2") {
+                val aim = aimPositions[id]
+                tx = aim?.first ?: control.targetX * targetW
+                ty = aim?.second ?: control.targetY * targetH
             } else if (control != null) {
                 tx = control.targetX * targetW
                 ty = control.targetY * targetH
