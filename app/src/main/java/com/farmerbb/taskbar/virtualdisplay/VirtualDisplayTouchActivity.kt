@@ -566,7 +566,8 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         gamepadOverlay = VirtualMobaGamepadView(
             this,
             { virtualDisplayController },
-            { targetWidth to targetHeight }
+            { targetWidth to targetHeight },
+            { preview?.let { p -> android.graphics.RectF(p.left.toFloat(), p.top.toFloat(), (p.left + p.width).toFloat(), (p.top + p.height).toFloat()) } }
         ).apply {
             visibility = View.GONE
             elevation = dp(24).toFloat()
