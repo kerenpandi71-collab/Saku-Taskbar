@@ -638,6 +638,21 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
         }, LinearLayout.LayoutParams(dp(32), dp(27)))
         keyboardPanel.addView(keyboardTitle)
 
+        // Editing shortcuts are sent to the focused app on the virtual display.
+        val editActions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        listOf("Cut", "Copy", "Paste", "Select all").forEach { label ->
+            val button = actionButton(label) {
+                sendKeyboardEditCommand(label)
+            }
+            editActions.addView(button, LinearLayout.LayoutParams(0, dp(29), 1f).apply {
+                setMargins(dp(2), dp(1), dp(2), dp(1))
+            })
+        }
+        keyboardPanel.addView(editActions, LinearLayout.LayoutParams(-1, dp(31)))
+
         fun keyRow(labels: List<String>, weights: List<Float> = labels.map { 1f }) {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
