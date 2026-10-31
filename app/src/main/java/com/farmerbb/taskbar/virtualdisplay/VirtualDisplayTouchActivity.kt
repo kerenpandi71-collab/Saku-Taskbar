@@ -615,6 +615,9 @@ class VirtualDisplayTouchActivity : ComponentActivity() {
             elevation = dp(24).toFloat()
         }
         root.addView(gamepadOverlay, FrameLayout.LayoutParams(-1, -1))
+        // Keep the assistant ball above the full-screen transparent gamepad overlay so it remains tappable.
+        assistantBall.elevation = dp(32).toFloat()
+        assistantBall.bringToFront()
 
         // Keyboard sederhana bergaya Gboard: tombol besar, baris standar, tanpa tombol fungsi yang memenuhi ruang.
         // Area preview, trackpad, dan jalur Direct Touch sengaja tidak diubah.
